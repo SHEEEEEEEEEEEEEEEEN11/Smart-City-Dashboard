@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GridLayout rows="auto, auto, *" class="m-2 p-4 bg-white rounded-lg">
+    <Label text="Historical Analysis" class="text-xl font-bold mb-2"/>
+    
+    <GridLayout row="1" columns="*, *, *" class="mb-4">
+        <SegmentedBar selectedIndex="{{ timeRange }}" class="m-2" col="0" colSpan="2">
+            <SegmentedBar.items>
+                <SegmentedBarItem title="24h"/>
+                <SegmentedBarItem title="Week"/>
+                <SegmentedBarItem title="Month"/>
+            </SegmentedBar.items>
+        </SegmentedBar>
+        <Button text="Export" tap="{{ exportData }}" class="btn btn-outline m-2" col="2"/>
+    </GridLayout>
+    
+    <GridLayout row="2" rows="*, auto">
+        <WebView src="{{ chartHtml }}" height="300"/>
+        <GridLayout row="1" columns="*, *, *" rows="auto, auto" class="mt-4">
+            <Button text="AQI" tap="{{ showAQIHistory }}" 
+                    class="btn btn-primary m-1" row="0" col="0"/>
+            <Button text="Traffic" tap="{{ showTrafficHistory }}" 
+                    class="btn btn-secondary m-1" row="0" col="1"/>
+            <Button text="Temperature" tap="{{ showTempHistory }}" 
+                    class="btn btn-info m-1" row="0" col="2"/>
+            
+            <StackLayout row="1" colSpan="3" class="mt-2 p-2">
+                <Label text="{{ statisticsSummary }}" textWrap="true" 
+                       class="text-sm text-gray-600"/>
+            </StackLayout>
+        </GridLayout>
+    </GridLayout>
+</GridLayout>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GridLayout columns="*" rows="auto, auto, auto" class="bg-white m-2 p-4 rounded-lg shadow">
+    <GridLayout row="0" columns="*, auto" class="mb-2">
+        <Label text="{{ name }}" class="text-xl font-bold"/>
+        <Label col="1" text="{{ timestamp }}" class="text-sm text-gray-500"/>
+    </GridLayout>
+    
+    <GridLayout row="1" columns="*, *" rows="auto, auto" class="mb-2">
+        <Label row="0" col="0" text="Current AQI" class="text-sm text-gray-600"/>
+        <Label row="1" col="0" text="{{ aqi }}" class="text-lg font-bold" color="{{ $parents['ListView'].getAQIColor(aqi) }}"/>
+        
+        <Label row="0" col="1" text="Traffic Density" class="text-sm text-gray-600"/>
+        <Label row="1" col="1" text="{{ trafficDensity }}%" class="text-lg"/>
+    </GridLayout>
+    
+    <GridLayout row="2" columns="auto, auto, auto" class="text-sm text-gray-600">
+        <Label col="0" text="{{ temperature }}°C" class="mr-2"/>
+        <Label col="1" text="{{ humidity }}% RH" class="mr-2"/>
+        <Label col="2" text="{{ windSpeed }} km/h"/>
+    </GridLayout>
+</GridLayout>

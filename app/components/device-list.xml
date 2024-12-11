@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView items="{{ devices }}" class="list-group">
+    <ListView.itemTemplate>
+        <GridLayout columns="*, auto" rows="auto, auto" class="list-group-item p-4" backgroundColor="{{ status === 'online' ? '#e6ffe6' : '#ffe6e6' }}">
+            <Label text="{{ name }}" row="0" col="0" class="font-bold text-lg"/>
+            <Label text="{{ value }}" row="1" col="0" class="text-gray-600"/>
+            <Button text="{{ status === 'online' ? 'ON' : 'OFF' }}" 
+                    row="0" col="1" rowSpan="2"
+                    tap="{{ $parent.onDeviceToggle }}"
+                    class="{{ status === 'online' ? 'bg-green-500' : 'bg-red-500' }} text-white p-2 rounded"/>
+        </GridLayout>
+    </ListView.itemTemplate>
+</ListView>

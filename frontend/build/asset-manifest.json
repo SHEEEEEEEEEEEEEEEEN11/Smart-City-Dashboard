@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/smart-city-dashboard/static/css/main.097e3533.css",
+    "main.js": "/smart-city-dashboard/static/js/main.66fad38a.js",
+    "index.html": "/smart-city-dashboard/index.html",
+    "main.097e3533.css.map": "/smart-city-dashboard/static/css/main.097e3533.css.map",
+    "main.66fad38a.js.map": "/smart-city-dashboard/static/js/main.66fad38a.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.097e3533.css",
+    "static/js/main.66fad38a.js"
+  ]
+}

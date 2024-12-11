@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ScrollView>
+    <StackLayout class="m-2">
+        <Label text="Lifestyle Recommendations" class="text-xl font-bold mb-2"/>
+        <Repeater items="{{ recommendations }}">
+            <Repeater.itemTemplate>
+                <GridLayout columns="auto, *" class="bg-white p-4 rounded-lg shadow-md mb-2">
+                    <Label col="0" text="{{ icon }}" class="text-3xl mr-4"/>
+                    <StackLayout col="1">
+                        <Label text="{{ title }}" class="font-bold text-lg"/>
+                        <Label text="{{ description }}" textWrap="true" class="text-gray-600"/>
+                    </StackLayout>
+                </GridLayout>
+            </Repeater.itemTemplate>
+        </Repeater>
+    </StackLayout>
+</ScrollView>

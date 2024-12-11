@@ -1,0 +1,45 @@
+<Page xmlns="http://schemas.nativescript.org/tns.xsd" navigatingTo="onNavigatingTo">
+    <ActionBar title="Delhi Air Quality Monitor" class="bg-blue-600 text-white">
+        <ActionItem ios.position="right" android.position="actionBar"
+                   tap="{{ onRefresh }}">
+            <Label text="&#x21BB;" class="fas text-2xl"/>
+        </ActionItem>
+    </ActionBar>
+    
+    <TabView selectedIndex="{{ selectedTab }}" class="bg-gray-100">
+        <!-- Current Data Tab -->
+        <TabViewItem title="Current">
+            <TabViewItem.view>
+                <GridLayout rows="auto, *">
+                    <StackLayout row="0" class="p-4">
+                        <Label text="{{ isLoading ? 'Updating...' : 'Last Updated: ' + lastUpdate }}"
+                               class="text-sm text-gray-600 text-center"/>
+                        <Label text="Predicted trend: {{ predictionTrend }}"
+                               class="text-sm font-bold text-center mt-1"
+                               color="{{ predictionTrendColor }}"/>
+                    </StackLayout>
+                    
+                    <ListView row="1" items="{{ locations }}" class="list-group">
+                        <ListView.itemTemplate>
+                            <include src="components/location-card"/>
+                        </ListView.itemTemplate>
+                    </ListView>
+                </GridLayout>
+            </TabViewItem.view>
+        </TabViewItem>
+
+        <!-- History Tab -->
+        <TabViewItem title="History">
+            <TabViewItem.view>
+                <include src="components/history-chart"/>
+            </TabViewItem.view>
+        </TabViewItem>
+
+        <!-- Recommendations Tab -->
+        <TabViewItem title="Recommendations">
+            <TabViewItem.view>
+                <include src="components/recommendations"/>
+            </TabViewItem.view>
+        </TabViewItem>
+    </TabView>
+</Page>
