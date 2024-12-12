@@ -24,6 +24,98 @@ A modern, real-time dashboard for monitoring and controlling smart city infrastr
   - Automatic infrastructure adjustments
   - Real-time alerts and notifications
 
+## Project Structure
+```
+project/
+├── frontend/             # React frontend application
+│   ├── public/          # Static files
+│   ├── src/             # Source code
+│   └── package.json     # Frontend dependencies
+├── app.py               # Flask backend server
+└── requirements.txt     # Python dependencies
+```
+
+## Setup Instructions
+
+### Prerequisites
+- Python 3.8 or higher
+- Node.js 14 or higher
+- npm (Node Package Manager)
+- Git
+
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/SHEEEEEEEEEEEEEEEEN11/Smart-City-Dashboard.git
+cd Smart-City-Dashboard
+```
+
+### Step 2: Backend Setup
+1. Create and activate a Python virtual environment:
+```bash
+python -m venv venv
+venv\Scripts\activate  # On Windows
+```
+
+2. Install Python dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Start the Flask backend server:
+```bash
+python app.py
+```
+The backend will run on http://localhost:5000
+
+### Step 3: Frontend Setup
+1. Navigate to the frontend directory:
+```bash
+cd frontend
+```
+
+2. Install Node.js dependencies:
+```bash
+npm install
+```
+
+3. Start the React development server:
+```bash
+npm start
+```
+The frontend will automatically open in your browser at http://localhost:3000
+
+## Accessing the Dashboard
+Once both servers are running:
+1. Open your web browser
+2. Navigate to http://localhost:3000
+3. The dashboard should display real-time data visualizations including:
+   - PM2.5 levels
+   - PM10 levels
+   - Traffic duration metrics
+   - Travel distance data
+
+## Troubleshooting
+If you encounter any issues:
+
+1. **Backend Issues**
+   - Ensure Python virtual environment is activated
+   - Verify all Python dependencies are installed
+   - Check if port 5000 is available
+
+2. **Frontend Issues**
+   - Clear npm cache: `npm cache clean --force`
+   - Delete node_modules and reinstall: 
+     ```bash
+     rm -rf node_modules
+     npm install
+     ```
+   - Verify port 3000 is not in use
+
+3. **Data Loading Issues**
+   - Ensure both backend and frontend servers are running
+   - Check browser console for any error messages
+   - Verify network connectivity
+
 ## Quick Start
 
 ### Prerequisites
