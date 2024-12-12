@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Grid, Alert, CircularProgress, Container } from '@mui/material';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, Typography, Paper, Grid, Alert, AlertTitle, CircularProgress, Container } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Papa from 'papaparse';
 
@@ -24,66 +24,22 @@ function App() {
     avgDistance: 0,
     maxDistance: 0
   });
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        console.log('Loading CSV data...');
-        
-        const csvUrl = process.env.NODE_ENV === 'development' 
-          ? '/Merged_Air_Quality_and_Traffic_Data.csv'
-          : './Merged_Air_Quality_and_Traffic_Data.csv';
-          
-        console.log('Fetching CSV from:', csvUrl);
-        const response = await fetch(csvUrl);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch CSV: ${response.status} ${response.statusText}`);
-        }
-        
-        const csvText = await response.text();
-        
-        Papa.parse(csvText, {
-          header: true,
-          complete: (results) => {
-            console.log('Parsed data:', results);
-            if (results.data && results.data.length > 0) {
-              processData(results.data);
-            } else {
-              setError('No data found in CSV');
-            }
-            setLoading(false);
-          },
-          error: (error) => {
-            console.error('Error parsing CSV:', error);
-            setError('Failed to parse CSV data');
-            setLoading(false);
-          }
-        });
-      } catch (error) {
-        console.error('Error loading data:', error);
-        setError('Failed to load data: ' + error.message);
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
+  const [actuations, setActuations] = useState([]);
 
   // Helper function to calculate average
   const average = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
 
-  const processData = (parsedData) => {
+  const processData = useCallback((parsedData) => {
+    console.log('Starting data processing...');
+    console.log('Initial data length:', parsedData.length);
+    
     // Process the last 7 days of data
     const processedData = parsedData
       .filter(row => row.timestamp) // Remove any rows without timestamp
       .map(row => {
-        // Parse the timestamp
+        // Parse the timestamp and keep it in 2024
         const timestamp = new Date(row.timestamp);
-        // Ensure we're using the correct year (2023)
-        timestamp.setFullYear(2023);
-        
+        console.log('Original timestamp:', row.timestamp, 'Parsed date:', timestamp);
         return {
           timestamp: timestamp.getTime(),
           pm2_5: parseFloat(row.pm2_5) || 0,
@@ -95,28 +51,48 @@ function App() {
           duration_in_traffic_min: parseFloat(row.duration_in_traffic_min) || 0
         };
       })
-      .sort((a, b) => b.timestamp - a.timestamp);
-
-    // Get last 7 days of data
-    const now = new Date('2023-12-12'); // Use a fixed reference date
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(now.getDate() - 7);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
+      .filter(row => {
+        const rowDate = new Date(row.timestamp);
+        const valid = rowDate >= new Date('2024-11-28') && rowDate <= new Date('2024-12-06');
+        if (!valid) {
+          console.warn('Invalid timestamp:', rowDate);
+        }
+        return valid;
+      });
     
-    console.log('Date range:', {
-      from: sevenDaysAgo.toISOString(),
-      to: now.toISOString()
+    console.log('After parsing timestamps:', processedData.length);
+    console.log('Sample processed row:', processedData[0]);
+
+    // Get data from 26/11/2024 21:48 to 6/12/2024
+    const endDate = new Date('2024-12-06');
+    const startDate = new Date('2024-11-26T21:48:00');
+    startDate.setHours(21, 48, 0, 0);
+    
+    console.log('Filtering for date range:', {
+      from: startDate.toISOString(),
+      to: endDate.toISOString()
     });
 
     const filteredData = processedData.filter(row => {
       const rowDate = new Date(row.timestamp);
-      return rowDate >= sevenDaysAgo && rowDate <= now;
+      console.log('Row date:', rowDate);
+      return rowDate >= startDate && rowDate <= endDate;
     });
 
-    console.log('Filtered data points:', filteredData.length);
+    console.log('After date filtering:', filteredData.length);
     if (filteredData.length > 0) {
-      console.log('First data point:', new Date(filteredData[0].timestamp).toISOString());
-      console.log('Last data point:', new Date(filteredData[filteredData.length - 1].timestamp).toISOString());
+      console.log('First filtered row:', {
+        date: new Date(filteredData[0].timestamp).toISOString(),
+        pm2_5: filteredData[0].pm2_5,
+        pm10: filteredData[0].pm10,
+        duration: filteredData[0].duration_in_traffic_min
+      });
+      console.log('Last filtered row:', {
+        date: new Date(filteredData[filteredData.length - 1].timestamp).toISOString(),
+        pm2_5: filteredData[filteredData.length - 1].pm2_5,
+        pm10: filteredData[filteredData.length - 1].pm10,
+        duration: filteredData[filteredData.length - 1].duration_in_traffic_min
+      });
     }
 
     // Calculate statistics
@@ -138,8 +114,104 @@ function App() {
       maxDistance: Math.max(...filteredData.map(d => d.distance_km))
     };
 
-    setData(filteredData);
+    const sortedData = filteredData.sort((a, b) => b.timestamp - a.timestamp);
+    setData(sortedData);
+
+    console.log('Data sorted by timestamp:', sortedData);
+
+    // Generate actuations based on the latest data
+    const latestData = sortedData[0];
+    const actuations = generateActuations(sortedData);
+    setActuations(actuations);
+
     setStatistics(stats);
+  }, []);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        console.log('Loading CSV data...');
+        
+        const csvUrl = process.env.NODE_ENV === 'development' 
+          ? '/Merged_Air_Quality_and_Traffic_Data.csv'
+          : './Merged_Air_Quality_and_Traffic_Data.csv';
+          
+        console.log('Fetching CSV from:', csvUrl);
+        const response = await fetch(csvUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch CSV: ${response.status} ${response.statusText}`);
+        }
+        
+        const csvText = await response.text();
+        console.log('CSV text length:', csvText.length);
+        
+        Papa.parse(csvText, {
+          header: true,
+          complete: (results) => {
+            console.log('Parsed data:', results.data.slice(0, 5)); // Log first 5 rows
+            console.log('Total rows:', results.data.length);
+            console.log('Sample row:', results.data[0]);
+            console.log('Column headers:', results.meta.fields);
+            if (results.data && results.data.length > 0) {
+              processData(results.data);
+            } else {
+              setError('No data found in CSV');
+            }
+            setLoading(false);
+          },
+          error: (error) => {
+            console.error('Error parsing CSV:', error);
+            setError('Failed to parse CSV data');
+            setLoading(false);
+          }
+        });
+      } catch (error) {
+        console.error('Error loading data:', error);
+        setError('Failed to load data: ' + error.message);
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [processData]);
+
+  // Add actuation logic
+  const generateActuations = (data) => {
+    if (!data || data.length === 0) return [];
+    
+    const actuations = [];
+    const latestData = data[0];
+    
+    // Traffic light control based on congestion
+    if (latestData.duration_in_traffic_min > statistics.avgDuration * 1.5) {
+      actuations.push({
+        type: 'TRAFFIC_SIGNAL',
+        action: 'EXTEND_GREEN_DURATION',
+        reason: 'High traffic congestion detected'
+      });
+    }
+    
+    // Ventilation control based on air quality
+    if (latestData.pm2_5 > 100 || latestData.pm10 > 150) {
+      actuations.push({
+        type: 'VENTILATION',
+        action: 'INCREASE_VENTILATION',
+        reason: 'Poor air quality detected'
+      });
+    }
+    
+    // Digital signs based on combined conditions
+    if (latestData.pm2_5 > 100 && latestData.duration_in_traffic_min > statistics.avgDuration * 1.2) {
+      actuations.push({
+        type: 'DIGITAL_SIGNS',
+        action: 'DISPLAY_WARNING',
+        reason: 'High pollution and traffic levels'
+      });
+    }
+    
+    return actuations;
   };
 
   if (loading) {
@@ -318,6 +390,90 @@ function App() {
                   <Typography>Max Duration: {statistics.maxDuration.toFixed(2)} minutes</Typography>
                 </>
               )}
+            </Paper>
+          </Grid>
+
+          {/* Air Quality vs Traffic Correlation Section */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" component="h2" sx={{ mb: 2, bgcolor: '#0D47A1', color: 'white', p: 1 }}>
+                Air Quality vs Traffic Correlation
+              </Typography>
+
+              <Box sx={{ height: 400, mb: 4 }}>
+                <Typography variant="h6" align="center" gutterBottom>
+                  Air Quality and Traffic Correlation with Automated Response
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Automated Responses:
+                  </Typography>
+                  {actuations.map((actuation, index) => (
+                    <Alert 
+                      key={index} 
+                      severity={actuation.type === 'DIGITAL_SIGNS' ? 'warning' : 'info'}
+                      sx={{ mb: 1 }}
+                    >
+                      <AlertTitle>{actuation.type.replace(/_/g, ' ')}</AlertTitle>
+                      {actuation.reason} - Action: {actuation.action.replace(/_/g, ' ')}
+                    </Alert>
+                  ))}
+                </Box>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="timestamp"
+                      tickFormatter={(time) => {
+                        const date = new Date(time);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                      }}
+                      interval={Math.ceil(data.length / 7)}
+                    />
+                    <YAxis 
+                      yAxisId="air" 
+                      label={{ value: 'Air Quality (µg/m³)', angle: -90, position: 'insideLeft' }}
+                    />
+                    <YAxis 
+                      yAxisId="traffic" 
+                      orientation="right"
+                      label={{ value: 'Traffic Duration (min)', angle: 90, position: 'insideRight' }}
+                    />
+                    <Tooltip
+                      labelFormatter={(label) => {
+                        const date = new Date(label);
+                        return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+                      }}
+                      formatter={(value) => value.toFixed(2)}
+                    />
+                    <Legend />
+                    <Line 
+                      yAxisId="air"
+                      type="monotone" 
+                      dataKey="pm2_5" 
+                      name="PM2.5" 
+                      stroke="#00BCD4" 
+                      dot={false}
+                    />
+                    <Line 
+                      yAxisId="air"
+                      type="monotone" 
+                      dataKey="pm10" 
+                      name="PM10" 
+                      stroke="#2196F3" 
+                      dot={false}
+                    />
+                    <Line 
+                      yAxisId="traffic"
+                      type="monotone" 
+                      dataKey="duration_in_traffic_min" 
+                      name="Traffic Duration" 
+                      stroke="#FF5722" 
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Box>
             </Paper>
           </Grid>
         </Grid>
