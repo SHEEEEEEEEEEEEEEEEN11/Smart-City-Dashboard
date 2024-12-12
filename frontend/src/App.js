@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Paper, Grid, Alert, CircularProgress, Container } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Papa from 'papaparse';
+import csvData from '../public/Merged_Air_Quality_and_Traffic_Data.csv';
 
 function App() {
   const [data, setData] = useState([]);
@@ -29,73 +30,18 @@ function App() {
     const loadData = async () => {
       try {
         setLoading(true);
-        console.log('Attempting to fetch CSV...');
-        // Use relative path instead of process.env.PUBLIC_URL
-        const csvUrl = './Merged_Air_Quality_and_Traffic_Data.csv';
-        console.log('CSV URL:', csvUrl);
-        console.log('Current location:', window.location.href);
+        console.log('Loading CSV data...');
         
-        const response = await fetch(csvUrl);
-        console.log('CSV Response:', response);
-        console.log('Response headers:', Object.fromEntries([...response.headers]));
-        console.log('Response status:', response.status, response.statusText);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch CSV: ${response.status} ${response.statusText}`);
-        }
-        
-        const csvText = await response.text();
-        console.log('CSV Text length:', csvText.length);
-        console.log('First 100 chars:', csvText.substring(0, 100));
-        
-        Papa.parse(csvText, {
+        Papa.parse(csvData, {
+          download: false,
           header: true,
           complete: (results) => {
-            console.log('Parse complete, rows:', results.data.length);
-            if (results.errors.length > 0) {
-              console.error('Parse errors:', results.errors);
+            console.log('Parsed data:', results);
+            if (results.data && results.data.length > 0) {
+              processData(results.data);
+            } else {
+              setError('No data found in CSV');
             }
-            // Process the last 7 days of data
-            const parsedData = results.data
-              .filter(row => row.timestamp) // Remove any rows without timestamp
-              .map(row => ({
-                timestamp: new Date(row.timestamp),
-                pm2_5: parseFloat(row.pm2_5),
-                pm10: parseFloat(row.pm10),
-                no2: parseFloat(row.no2),
-                o3: parseFloat(row.o3),
-                aqi: parseFloat(row.aqi),
-                distance_km: parseFloat(row.distance_km),
-                duration_in_traffic_min: parseFloat(row.duration_in_traffic_min)
-              }))
-              .sort((a, b) => b.timestamp - a.timestamp);
-
-            // Get last 7 days of data
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            const filteredData = parsedData.filter(row => row.timestamp >= sevenDaysAgo);
-
-            // Calculate statistics
-            const stats = {
-              avgPM25: average(filteredData.map(d => d.pm2_5)),
-              avgPM10: average(filteredData.map(d => d.pm10)),
-              maxPM25: Math.max(...filteredData.map(d => d.pm2_5)),
-              maxPM10: Math.max(...filteredData.map(d => d.pm10)),
-              minPM25: Math.min(...filteredData.map(d => d.pm2_5)),
-              avgNO2: average(filteredData.map(d => d.no2)),
-              maxNO2: Math.max(...filteredData.map(d => d.no2)),
-              avgO3: average(filteredData.map(d => d.o3)),
-              maxO3: Math.max(...filteredData.map(d => d.o3)),
-              avgAQI: average(filteredData.map(d => d.aqi)),
-              maxAQI: Math.max(...filteredData.map(d => d.aqi)),
-              avgDuration: average(filteredData.map(d => d.duration_in_traffic_min)),
-              maxDuration: Math.max(...filteredData.map(d => d.duration_in_traffic_min)),
-              avgDistance: average(filteredData.map(d => d.distance_km)),
-              maxDistance: Math.max(...filteredData.map(d => d.distance_km))
-            };
-
-            setData(filteredData);
-            setStatistics(stats);
             setLoading(false);
           },
           error: (error) => {
@@ -105,8 +51,8 @@ function App() {
           }
         });
       } catch (error) {
-        console.error('Error loading CSV:', error);
-        setError('Failed to load CSV data');
+        console.error('Error loading data:', error);
+        setError('Failed to load data');
         setLoading(false);
       }
     };
@@ -116,6 +62,50 @@ function App() {
 
   // Helper function to calculate average
   const average = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+  const processData = (parsedData) => {
+    // Process the last 7 days of data
+    const processedData = parsedData
+      .filter(row => row.timestamp) // Remove any rows without timestamp
+      .map(row => ({
+        timestamp: new Date(row.timestamp),
+        pm2_5: parseFloat(row.pm2_5),
+        pm10: parseFloat(row.pm10),
+        no2: parseFloat(row.no2),
+        o3: parseFloat(row.o3),
+        aqi: parseFloat(row.aqi),
+        distance_km: parseFloat(row.distance_km),
+        duration_in_traffic_min: parseFloat(row.duration_in_traffic_min)
+      }))
+      .sort((a, b) => b.timestamp - a.timestamp);
+
+    // Get last 7 days of data
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const filteredData = processedData.filter(row => row.timestamp >= sevenDaysAgo);
+
+    // Calculate statistics
+    const stats = {
+      avgPM25: average(filteredData.map(d => d.pm2_5)),
+      avgPM10: average(filteredData.map(d => d.pm10)),
+      maxPM25: Math.max(...filteredData.map(d => d.pm2_5)),
+      maxPM10: Math.max(...filteredData.map(d => d.pm10)),
+      minPM25: Math.min(...filteredData.map(d => d.pm2_5)),
+      avgNO2: average(filteredData.map(d => d.no2)),
+      maxNO2: Math.max(...filteredData.map(d => d.no2)),
+      avgO3: average(filteredData.map(d => d.o3)),
+      maxO3: Math.max(...filteredData.map(d => d.o3)),
+      avgAQI: average(filteredData.map(d => d.aqi)),
+      maxAQI: Math.max(...filteredData.map(d => d.aqi)),
+      avgDuration: average(filteredData.map(d => d.duration_in_traffic_min)),
+      maxDuration: Math.max(...filteredData.map(d => d.duration_in_traffic_min)),
+      avgDistance: average(filteredData.map(d => d.distance_km)),
+      maxDistance: Math.max(...filteredData.map(d => d.distance_km))
+    };
+
+    setData(filteredData);
+    setStatistics(stats);
+  };
 
   if (loading) {
     return (
