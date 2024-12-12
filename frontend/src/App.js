@@ -79,21 +79,21 @@ function App() {
     const processedData = parsedData
       .filter(row => row.timestamp) // Remove any rows without timestamp
       .map(row => ({
-        timestamp: new Date(row.timestamp),
-        pm2_5: parseFloat(row.pm2_5),
-        pm10: parseFloat(row.pm10),
-        no2: parseFloat(row.no2),
-        o3: parseFloat(row.o3),
-        aqi: parseFloat(row.aqi),
-        distance_km: parseFloat(row.distance_km),
-        duration_in_traffic_min: parseFloat(row.duration_in_traffic_min)
+        timestamp: new Date(row.timestamp).getTime(), // Convert to timestamp
+        pm2_5: parseFloat(row.pm2_5) || 0,
+        pm10: parseFloat(row.pm10) || 0,
+        no2: parseFloat(row.no2) || 0,
+        o3: parseFloat(row.o3) || 0,
+        aqi: parseFloat(row.aqi) || 0,
+        distance_km: parseFloat(row.distance_km) || 0,
+        duration_in_traffic_min: parseFloat(row.duration_in_traffic_min) || 0
       }))
       .sort((a, b) => b.timestamp - a.timestamp);
 
     // Get last 7 days of data
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const filteredData = processedData.filter(row => row.timestamp >= sevenDaysAgo);
+    const filteredData = processedData.filter(row => row.timestamp >= sevenDaysAgo.getTime());
 
     // Calculate statistics
     const stats = {
@@ -246,14 +246,26 @@ function App() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="timestamp"
-                      tickFormatter={(time) => new Date(time).toLocaleDateString()}
+                      tickFormatter={(time) => {
+                        const date = new Date(time);
+                        return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+                      }}
                     />
                     <YAxis />
                     <Tooltip
-                      labelFormatter={(label) => new Date(label).toLocaleString()}
+                      labelFormatter={(label) => {
+                        const date = new Date(label);
+                        return date.toLocaleString();
+                      }}
                     />
                     <Legend />
-                    <Line type="monotone" dataKey="duration_in_traffic_min" name="Traffic Density (minutes in traffic)" stroke="#8884d8" />
+                    <Line 
+                      type="monotone" 
+                      dataKey="duration_in_traffic_min" 
+                      name="Traffic Duration (min)" 
+                      stroke="#8884d8" 
+                      dot={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </Box>
