@@ -91,9 +91,23 @@ function App() {
       .sort((a, b) => b.timestamp - a.timestamp);
 
     // Get last 7 days of data
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const filteredData = processedData.filter(row => row.timestamp >= sevenDaysAgo.getTime());
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0); // Start from beginning of the day
+    
+    console.log('Date range:', {
+      from: sevenDaysAgo.toISOString(),
+      to: now.toISOString()
+    });
+
+    const filteredData = processedData.filter(row => {
+      const rowDate = new Date(row.timestamp);
+      return rowDate >= sevenDaysAgo && rowDate <= now;
+    });
+
+    console.log('Filtered data points:', filteredData.length);
+    console.log('Sample data point:', filteredData[0]);
 
     // Calculate statistics
     const stats = {
@@ -248,10 +262,12 @@ function App() {
                       dataKey="timestamp"
                       tickFormatter={(time) => {
                         const date = new Date(time);
-                        return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
                       }}
+                      interval="preserveStartEnd"
                     />
-                    <YAxis />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
                     <Tooltip
                       labelFormatter={(label) => {
                         const date = new Date(label);
@@ -260,10 +276,19 @@ function App() {
                     />
                     <Legend />
                     <Line 
+                      yAxisId="left"
                       type="monotone" 
                       dataKey="duration_in_traffic_min" 
                       name="Traffic Duration (min)" 
                       stroke="#8884d8" 
+                      dot={false}
+                    />
+                    <Line 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="distance_km" 
+                      name="Distance (km)" 
+                      stroke="#82ca9d" 
                       dot={false}
                     />
                   </LineChart>
