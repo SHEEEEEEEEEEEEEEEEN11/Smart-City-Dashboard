@@ -78,23 +78,30 @@ function App() {
     // Process the last 7 days of data
     const processedData = parsedData
       .filter(row => row.timestamp) // Remove any rows without timestamp
-      .map(row => ({
-        timestamp: new Date(row.timestamp).getTime(), // Convert to timestamp
-        pm2_5: parseFloat(row.pm2_5) || 0,
-        pm10: parseFloat(row.pm10) || 0,
-        no2: parseFloat(row.no2) || 0,
-        o3: parseFloat(row.o3) || 0,
-        aqi: parseFloat(row.aqi) || 0,
-        distance_km: parseFloat(row.distance_km) || 0,
-        duration_in_traffic_min: parseFloat(row.duration_in_traffic_min) || 0
-      }))
+      .map(row => {
+        // Parse the timestamp
+        const timestamp = new Date(row.timestamp);
+        // Ensure we're using the correct year (2023)
+        timestamp.setFullYear(2023);
+        
+        return {
+          timestamp: timestamp.getTime(),
+          pm2_5: parseFloat(row.pm2_5) || 0,
+          pm10: parseFloat(row.pm10) || 0,
+          no2: parseFloat(row.no2) || 0,
+          o3: parseFloat(row.o3) || 0,
+          aqi: parseFloat(row.aqi) || 0,
+          distance_km: parseFloat(row.distance_km) || 0,
+          duration_in_traffic_min: parseFloat(row.duration_in_traffic_min) || 0
+        };
+      })
       .sort((a, b) => b.timestamp - a.timestamp);
 
     // Get last 7 days of data
-    const now = new Date();
+    const now = new Date('2023-12-12'); // Use a fixed reference date
     const sevenDaysAgo = new Date(now);
     sevenDaysAgo.setDate(now.getDate() - 7);
-    sevenDaysAgo.setHours(0, 0, 0, 0); // Start from beginning of the day
+    sevenDaysAgo.setHours(0, 0, 0, 0);
     
     console.log('Date range:', {
       from: sevenDaysAgo.toISOString(),
@@ -107,7 +114,10 @@ function App() {
     });
 
     console.log('Filtered data points:', filteredData.length);
-    console.log('Sample data point:', filteredData[0]);
+    if (filteredData.length > 0) {
+      console.log('First data point:', new Date(filteredData[0].timestamp).toISOString());
+      console.log('Last data point:', new Date(filteredData[filteredData.length - 1].timestamp).toISOString());
+    }
 
     // Calculate statistics
     const stats = {
@@ -264,15 +274,16 @@ function App() {
                         const date = new Date(time);
                         return `${date.getMonth() + 1}/${date.getDate()}`;
                       }}
-                      interval="preserveStartEnd"
+                      interval={Math.ceil(data.length / 7)}
                     />
                     <YAxis yAxisId="left" />
                     <YAxis yAxisId="right" orientation="right" />
                     <Tooltip
                       labelFormatter={(label) => {
                         const date = new Date(label);
-                        return date.toLocaleString();
+                        return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
                       }}
+                      formatter={(value) => value.toFixed(2)}
                     />
                     <Legend />
                     <Line 
