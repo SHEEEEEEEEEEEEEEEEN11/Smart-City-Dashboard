@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Paper, Grid, Alert, CircularProgress, Container } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Papa from 'papaparse';
-import csvData from '../public/Merged_Air_Quality_and_Traffic_Data.csv';
 
 function App() {
   const [data, setData] = useState([]);
@@ -32,8 +31,20 @@ function App() {
         setLoading(true);
         console.log('Loading CSV data...');
         
-        Papa.parse(csvData, {
-          download: false,
+        const csvUrl = process.env.NODE_ENV === 'development' 
+          ? '/Merged_Air_Quality_and_Traffic_Data.csv'
+          : './Merged_Air_Quality_and_Traffic_Data.csv';
+          
+        console.log('Fetching CSV from:', csvUrl);
+        const response = await fetch(csvUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch CSV: ${response.status} ${response.statusText}`);
+        }
+        
+        const csvText = await response.text();
+        
+        Papa.parse(csvText, {
           header: true,
           complete: (results) => {
             console.log('Parsed data:', results);
@@ -52,7 +63,7 @@ function App() {
         });
       } catch (error) {
         console.error('Error loading data:', error);
-        setError('Failed to load data');
+        setError('Failed to load data: ' + error.message);
         setLoading(false);
       }
     };
@@ -109,20 +120,41 @@ function App() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 2 }}>
-        <CircularProgress />
-        <Typography>Loading data...</Typography>
-      </Box>
+      <Container maxWidth="lg">
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh', 
+          gap: 2 
+        }}>
+          <CircularProgress size={60} />
+          <Typography variant="h6">Loading Smart City Dashboard Data...</Typography>
+        </Box>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      </Box>
+      <Container maxWidth="lg">
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh', 
+          gap: 2 
+        }}>
+          <Alert severity="error" sx={{ width: '100%', maxWidth: 600 }}>
+            {error}
+          </Alert>
+          <Typography variant="body1" color="text.secondary">
+            Please try refreshing the page or contact support if the problem persists.
+          </Typography>
+        </Box>
+      </Container>
     );
   }
 
