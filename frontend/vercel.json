@@ -2,6 +2,10 @@
   "version": 2,
   "rewrites": [
     {
+      "source": "/Merged_Air_Quality_and_Traffic_Data.csv",
+      "destination": "/Merged_Air_Quality_and_Traffic_Data.csv"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
