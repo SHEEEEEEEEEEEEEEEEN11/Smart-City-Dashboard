@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/smart-city-dashboard/static/css/main.097e3533.css",
-    "main.js": "/smart-city-dashboard/static/js/main.66fad38a.js",
+    "main.js": "/smart-city-dashboard/static/js/main.5875bc3c.js",
     "index.html": "/smart-city-dashboard/index.html",
     "main.097e3533.css.map": "/smart-city-dashboard/static/css/main.097e3533.css.map",
-    "main.66fad38a.js.map": "/smart-city-dashboard/static/js/main.66fad38a.js.map"
+    "main.5875bc3c.js.map": "/smart-city-dashboard/static/js/main.5875bc3c.js.map"
   },
   "entrypoints": [
     "static/css/main.097e3533.css",
-    "static/js/main.66fad38a.js"
+    "static/js/main.5875bc3c.js"
   ]
 }

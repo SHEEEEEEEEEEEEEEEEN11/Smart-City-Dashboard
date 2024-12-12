@@ -22,7 +22,9 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d build",
+    "deploy:github": "gh-pages -d build -r https://github.com/SHEEEEEEEEEEEEEEEEN11/smart-city-dashboard.git",
+    "deploy:github:ci": "gh-pages -d build -r https://github.com/SHEEEEEEEEEEEEEEEEN11/smart-city-dashboard.git -t ${GITHUB_TOKEN}"
   },
   "proxy": "http://localhost:5000",
   "eslintConfig": {
