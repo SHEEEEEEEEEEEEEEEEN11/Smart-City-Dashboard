@@ -2,7 +2,10 @@ services:
   - type: web
     name: smart-city-dashboard
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+      cd frontend && npm ci && npm run build && cd ..
+    staticPublishPath: ./frontend/build
     startCommand: python app.py
     envVars:
       - key: PYTHON_VERSION
@@ -13,5 +16,11 @@ services:
         value: app.py
       - key: PORT
         value: 10000
+      - key: NODE_VERSION
+        value: 18.17.0
+      - key: NODE_ENV
+        value: production
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=2048
     healthCheckPath: /
     autoDeploy: true
