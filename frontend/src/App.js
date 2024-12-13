@@ -281,9 +281,13 @@ function App() {
     console.log('Starting data processing...');
     console.log('Initial data length:', parsedData.length);
     
+    if (!parsedData || parsedData.length === 0) {
+      throw new Error('No data available to process');
+    }
+    
     // Process the data and ensure it's sorted by date
     const processedData = parsedData
-      .filter(row => row.timestamp) // Remove any rows without timestamp
+      .filter(row => row.timestamp && !isNaN(new Date(row.timestamp).getTime())) // Remove invalid timestamps
       .map(row => {
         const timestamp = new Date(row.timestamp);
         return {
@@ -297,9 +301,13 @@ function App() {
           duration_in_traffic_min: parseFloat(row.duration_in_traffic_min) || 0
         };
       })
-      .sort((a, b) => a.timestamp - b.timestamp); // Sort by timestamp
+      .sort((a, b) => a.timestamp - b.timestamp);
     
     console.log('Processed data length:', processedData.length);
+    
+    if (processedData.length === 0) {
+      throw new Error('No valid data points after processing');
+    }
     
     // Calculate date range for filtering
     const startDate = new Date('2023-11-28').getTime();
@@ -311,58 +319,65 @@ function App() {
     );
     
     console.log('Filtered data length:', filteredData.length);
+    
+    if (filteredData.length === 0) {
+      throw new Error('No data available for the specified date range');
+    }
+    
     return filteredData;
   }, []);
 
   const loadData = useCallback(() => {
     setLoading(true);
     setError(null);
+    setData([]);
+    setVisibleData([]);
     
     const csvUrl = '/Merged_Air_Quality_and_Traffic_Data.csv';
     console.log('Loading CSV from:', csvUrl);
     
-    fetch(csvUrl)
-      .then(response => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(csvUrl);
         if (!response.ok) {
-          throw new Error(`Failed to fetch CSV: ${response.status} ${response.statusText}`);
+          throw new Error('Failed to fetch data');
         }
-        return response.text();
-      })
-      .then(csvText => {
-        if (!csvText.trim()) {
-          throw new Error('CSV file is empty');
-        }
-        
-        Papa.parse(csvText, {
+        const csvData = await response.text();
+        Papa.parse(csvData, {
           header: true,
-          dynamicTyping: true,
-          skipEmptyLines: true,
           complete: (results) => {
-            console.log('CSV parsing complete:', {
-              rows: results.data.length,
-              fields: results.meta.fields
-            });
-            
             if (results.data && results.data.length > 0) {
-              processData(results.data);
+              const filteredData = results.data
+                .filter(row => row.timestamp && new Date(row.timestamp) >= new Date('2023-11-28') && new Date(row.timestamp) <= new Date('2023-12-06'))
+                .filter((_, index) => index % 10 === 0); // Take every 10th point for smoother graphs
+              
+              if (filteredData.length === 0) {
+                setError('No data available for the selected date range');
+                setLoading(false);
+                return;
+              }
+              
+              setData(filteredData);
             } else {
-              setError('No data found in CSV');
+              setError('No data available');
             }
             setLoading(false);
           },
           error: (error) => {
-            console.error('CSV parsing error:', error);
-            setError('Failed to parse CSV data: ' + error.message);
+            console.error('Error parsing CSV:', error);
+            setError('Error parsing data');
             setLoading(false);
           }
         });
-      })
-      .catch(error => {
-        console.error('Error loading data:', error);
-        setError(error.message || 'Failed to load data');
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Error fetching data');
         setLoading(false);
-      });
-  }, [processData]);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -450,321 +465,324 @@ function App() {
     </>
   ), [visibleData]);
 
-  if (loading) {
-    return (
-      <Container maxWidth="lg">
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh', 
-          gap: 2 
-        }}>
-          <CircularProgress size={60} />
-          <Typography variant="h6">Loading Smart City Dashboard Data...</Typography>
-        </Box>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container maxWidth="lg">
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh', 
-          gap: 2 
-        }}>
-          <Alert severity="error" sx={{ width: '100%', maxWidth: 600 }}>
-            {error}
-          </Alert>
-          <Typography variant="body1" color="text.secondary">
-            Please try refreshing the page or contact support if the problem persists.
-          </Typography>
-        </Box>
-      </Container>
-    );
-  }
-
-  if (!data?.length) {
-    return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Alert severity="warning">
-          No data available
-        </Alert>
-      </Box>
-    );
-  }
-
   return (
     <div className="dashboard">
       <div className="dashboard-header">
         <h1>Smart City Dashboard</h1>
       </div>
 
-      <div className="top-section">
-        <div className="dashboard-section">
-          <h2>Air Quality Actuations</h2>
-          <ActuationCard 
-            title="Air Quality Actuations" 
-            actuations={actuations.filter(a => a.system === 'air')} 
-          />
+      {loading && (
+        <div className="loading-container">
+          <CircularProgress />
+          <Typography variant="h6" sx={{ mt: 2 }}>Loading data...</Typography>
         </div>
-        <div className="dashboard-section">
-          <h2>Traffic Actuations</h2>
-          <TrafficActuations trafficData={data} />
-        </div>
-        <div className="dashboard-section">
-          <h2>Combined Actuations</h2>
-          <CombinedActuations 
-            airQualityData={data} 
-            trafficData={data} 
-          />
-        </div>
-      </div>
+      )}
 
-      <div className="graphs-container">
-        <div className="dashboard-section">
-          <h2>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-              <path d="M12 3v18m0-18c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9z"/>
-            </svg>
-            Air Quality Monitoring
-          </h2>
-          <div className="chart-container">
-            <LineChart 
-              width={600} 
-              height={300} 
-              data={visibleData} 
-              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis 
-                dataKey="timestamp" 
-                type="number"
-                domain={['dataMin', 'dataMax']}
-                tickFormatter={(timestamp) => {
-                  const date = new Date(timestamp);
-                  return `${date.getDate()}/${date.getMonth() + 1}`;
-                }}
-                ticks={visibleData.map(item => item.timestamp).filter((_, index, array) => 
-                  index % Math.ceil(array.length / 10) === 0
-                )}
-                label={{ value: 'Date', position: 'bottom', offset: 0 }}
+      {error && (
+        <Alert 
+          severity="error" 
+          sx={{ 
+            margin: '20px auto',
+            maxWidth: '600px'
+          }}
+        >
+          <AlertTitle>Error</AlertTitle>
+          {error}
+          <Button 
+            onClick={loadData} 
+            variant="outlined" 
+            size="small" 
+            sx={{ mt: 1 }}
+          >
+            Retry
+          </Button>
+        </Alert>
+      )}
+
+      {!loading && !error && visibleData.length === 0 && (
+        <Alert 
+          severity="warning"
+          sx={{ 
+            margin: '20px auto',
+            maxWidth: '600px'
+          }}
+        >
+          <AlertTitle>No Data Available</AlertTitle>
+          No data is available for the selected time period.
+          <Button 
+            onClick={loadData} 
+            variant="outlined" 
+            size="small" 
+            sx={{ mt: 1 }}
+          >
+            Refresh
+          </Button>
+        </Alert>
+      )}
+
+      {!loading && !error && visibleData.length > 0 && (
+        <>
+          <div className="top-section">
+            <div className="dashboard-section">
+              <h2>Air Quality Actuations</h2>
+              <ActuationCard 
+                title="Air Quality Actuations" 
+                actuations={actuations.filter(a => a.system === 'air')} 
               />
-              <YAxis 
-                yAxisId="pm"
-                label={{ 
-                  value: 'Particulate Matter (µg/m³)', 
-                  angle: -90, 
-                  position: 'insideLeft',
-                  style: { textAnchor: 'middle' }
-                }}
+            </div>
+            <div className="dashboard-section">
+              <h2>Traffic Actuations</h2>
+              <TrafficActuations trafficData={data} />
+            </div>
+            <div className="dashboard-section">
+              <h2>Combined Actuations</h2>
+              <CombinedActuations 
+                airQualityData={data} 
+                trafficData={data} 
               />
-              <Tooltip 
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload.length) {
-                    const date = new Date(label);
-                    return (
-                      <div className="chart-tooltip">
-                        <p className="timestamp">
-                          {`${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`}
-                        </p>
-                        {payload.map((entry, index) => (
-                          <p key={index} style={{ color: entry.color }}>
-                            {`${entry.name}: ${entry.value.toFixed(2)} µg/m³`}
-                          </p>
-                        ))}
-                      </div>
-                    );
+            </div>
+          </div>
+
+          <div className="graphs-container">
+            <div className="dashboard-section">
+              <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                  <path d="M12 3v18m0-18c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9z"/>
+                </svg>
+                Air Quality Monitoring
+              </h2>
+              <div className="chart-container">
+                <LineChart 
+                  width={600} 
+                  height={300} 
+                  data={visibleData} 
+                  margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="timestamp" 
+                    type="number"
+                    domain={['dataMin', 'dataMax']}
+                    tickFormatter={(timestamp) => {
+                      const date = new Date(timestamp);
+                      return `${date.getDate()}/${date.getMonth() + 1}`;
+                    }}
+                    ticks={visibleData.map(item => item.timestamp).filter((_, index, array) => 
+                      index % Math.ceil(array.length / 10) === 0
+                    )}
+                    label={{ value: 'Date', position: 'bottom', offset: 0 }}
+                  />
+                  <YAxis 
+                    yAxisId="pm"
+                    label={{ 
+                      value: 'Particulate Matter (µg/m³)', 
+                      angle: -90, 
+                      position: 'insideLeft',
+                      style: { textAnchor: 'middle' }
+                    }}
+                  />
+                  <Tooltip 
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const date = new Date(label);
+                        return (
+                          <div className="chart-tooltip">
+                            <p className="timestamp">
+                              {`${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`}
+                            </p>
+                            {payload.map((entry, index) => (
+                              <p key={index} style={{ color: entry.color }}>
+                                {`${entry.name}: ${entry.value.toFixed(2)} µg/m³`}
+                              </p>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Legend 
+                    verticalAlign="top" 
+                    height={36}
+                    formatter={(value) => {
+                      const labels = {
+                        'pm2_5': 'PM2.5 (Fine particles)',
+                        'pm10': 'PM10 (Coarse particles)'
+                      };
+                      return labels[value] || value;
+                    }}
+                  />
+                  <Line 
+                    yAxisId="pm"
+                    type="monotone" 
+                    dataKey="pm2_5" 
+                    name="pm2_5" 
+                    stroke="#8884d8" 
+                    dot={false}
+                    strokeWidth={2}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line 
+                    yAxisId="pm"
+                    type="monotone" 
+                    dataKey="pm10" 
+                    name="pm10" 
+                    stroke="#82ca9d" 
+                    dot={false}
+                    strokeWidth={2}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </div>
+            </div>
+
+            <div className="dashboard-section">
+              <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                  <path d="M18 4v16H6V4h12m1-2H5c-.55 0-1 .45-1 1v18c0 .55.45 1 1 1h14c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1zm-1 11H6v2h12v-2zm0-4H6v2h12V9zm0-4H6v2h12V5z"/>
+                </svg>
+                Traffic Monitoring
+              </h2>
+              <div className="chart-container">
+                <LineChart 
+                  width={600} 
+                  height={300} 
+                  data={visibleData} 
+                  margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="timestamp" 
+                    type="number"
+                    domain={['dataMin', 'dataMax']}
+                    tickFormatter={(timestamp) => {
+                      const date = new Date(timestamp);
+                      return `${date.getDate()}/${date.getMonth() + 1}`;
+                    }}
+                    ticks={visibleData.map(item => item.timestamp).filter((_, index, array) => 
+                      index % Math.ceil(array.length / 10) === 0
+                    )}
+                    label={{ value: 'Date', position: 'bottom', offset: 0 }}
+                  />
+                  <YAxis 
+                    yAxisId="duration"
+                    orientation="left"
+                    label={{ 
+                      value: 'Duration (minutes)', 
+                      angle: -90, 
+                      position: 'insideLeft',
+                      style: { textAnchor: 'middle' }
+                    }}
+                  />
+                  <YAxis 
+                    yAxisId="distance"
+                    orientation="right"
+                    label={{ 
+                      value: 'Distance (km)', 
+                      angle: 90, 
+                      position: 'insideRight',
+                      style: { textAnchor: 'middle' }
+                    }}
+                  />
+                  <Tooltip 
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const date = new Date(label);
+                        return (
+                          <div className="chart-tooltip">
+                            <p className="timestamp">
+                              {`${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`}
+                            </p>
+                            {payload.map((entry, index) => (
+                              <p key={index} style={{ color: entry.color }}>
+                                {`${entry.name}: ${entry.value.toFixed(2)} ${entry.name.includes('Duration') ? 'min' : 'km'}`}
+                              </p>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Legend 
+                    verticalAlign="top" 
+                    height={36}
+                    formatter={(value) => {
+                      const labels = {
+                        'duration_in_traffic_min': 'Traffic Duration',
+                        'distance_km': 'Travel Distance'
+                      };
+                      return labels[value] || value;
+                    }}
+                  />
+                  <Line 
+                    yAxisId="duration"
+                    type="monotone" 
+                    dataKey="duration_in_traffic_min" 
+                    name="duration_in_traffic_min" 
+                    stroke="#8884d8" 
+                    dot={false}
+                    strokeWidth={2}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line 
+                    yAxisId="distance"
+                    type="monotone" 
+                    dataKey="distance_km" 
+                    name="distance_km" 
+                    stroke="#82ca9d" 
+                    dot={false}
+                    strokeWidth={2}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </div>
+            </div>
+          </div>
+
+          <div className="dashboard-section">
+            <h2>Key Metrics</h2>
+            <div className="metrics-grid">
+              <div className="metric-card">
+                <h4>Average PM2.5</h4>
+                <div className="value">
+                  {visibleData.length > 0 
+                    ? (visibleData.reduce((acc, curr) => acc + curr.pm2_5, 0) / visibleData.length).toFixed(2)
+                    : 'N/A'
                   }
-                  return null;
-                }}
-              />
-              <Legend 
-                verticalAlign="top" 
-                height={36}
-                formatter={(value) => {
-                  const labels = {
-                    'pm2_5': 'PM2.5 (Fine particles)',
-                    'pm10': 'PM10 (Coarse particles)'
-                  };
-                  return labels[value] || value;
-                }}
-              />
-              <Line 
-                yAxisId="pm"
-                type="monotone" 
-                dataKey="pm2_5" 
-                name="pm2_5" 
-                stroke="#8884d8" 
-                dot={false}
-                strokeWidth={2}
-                activeDot={{ r: 6 }}
-              />
-              <Line 
-                yAxisId="pm"
-                type="monotone" 
-                dataKey="pm10" 
-                name="pm10" 
-                stroke="#82ca9d" 
-                dot={false}
-                strokeWidth={2}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </div>
-        </div>
-
-        <div className="dashboard-section">
-          <h2>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-              <path d="M18 4v16H6V4h12m1-2H5c-.55 0-1 .45-1 1v18c0 .55.45 1 1 1h14c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1zm-1 11H6v2h12v-2zm0-4H6v2h12V9zm0-4H6v2h12V5z"/>
-            </svg>
-            Traffic Monitoring
-          </h2>
-          <div className="chart-container">
-            <LineChart 
-              width={600} 
-              height={300} 
-              data={visibleData} 
-              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis 
-                dataKey="timestamp" 
-                type="number"
-                domain={['dataMin', 'dataMax']}
-                tickFormatter={(timestamp) => {
-                  const date = new Date(timestamp);
-                  return `${date.getDate()}/${date.getMonth() + 1}`;
-                }}
-                ticks={visibleData.map(item => item.timestamp).filter((_, index, array) => 
-                  index % Math.ceil(array.length / 10) === 0
-                )}
-                label={{ value: 'Date', position: 'bottom', offset: 0 }}
-              />
-              <YAxis 
-                yAxisId="duration"
-                orientation="left"
-                label={{ 
-                  value: 'Duration (minutes)', 
-                  angle: -90, 
-                  position: 'insideLeft',
-                  style: { textAnchor: 'middle' }
-                }}
-              />
-              <YAxis 
-                yAxisId="distance"
-                orientation="right"
-                label={{ 
-                  value: 'Distance (km)', 
-                  angle: 90, 
-                  position: 'insideRight',
-                  style: { textAnchor: 'middle' }
-                }}
-              />
-              <Tooltip 
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload.length) {
-                    const date = new Date(label);
-                    return (
-                      <div className="chart-tooltip">
-                        <p className="timestamp">
-                          {`${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`}
-                        </p>
-                        {payload.map((entry, index) => (
-                          <p key={index} style={{ color: entry.color }}>
-                            {`${entry.name}: ${entry.value.toFixed(2)} ${entry.name.includes('Duration') ? 'min' : 'km'}`}
-                          </p>
-                        ))}
-                      </div>
-                    );
+                </div>
+              </div>
+              <div className="metric-card">
+                <h4>Average PM10</h4>
+                <div className="value">
+                  {visibleData.length > 0 
+                    ? (visibleData.reduce((acc, curr) => acc + curr.pm10, 0) / visibleData.length).toFixed(2)
+                    : 'N/A'
                   }
-                  return null;
-                }}
-              />
-              <Legend 
-                verticalAlign="top" 
-                height={36}
-                formatter={(value) => {
-                  const labels = {
-                    'duration_in_traffic_min': 'Traffic Duration',
-                    'distance_km': 'Travel Distance'
-                  };
-                  return labels[value] || value;
-                }}
-              />
-              <Line 
-                yAxisId="duration"
-                type="monotone" 
-                dataKey="duration_in_traffic_min" 
-                name="duration_in_traffic_min" 
-                stroke="#8884d8" 
-                dot={false}
-                strokeWidth={2}
-                activeDot={{ r: 6 }}
-              />
-              <Line 
-                yAxisId="distance"
-                type="monotone" 
-                dataKey="distance_km" 
-                name="distance_km" 
-                stroke="#82ca9d" 
-                dot={false}
-                strokeWidth={2}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </div>
-        </div>
-      </div>
-
-      <div className="dashboard-section">
-        <h2>Key Metrics</h2>
-        <div className="metrics-grid">
-          <div className="metric-card">
-            <h4>Average PM2.5</h4>
-            <div className="value">
-              {visibleData.length > 0 
-                ? (visibleData.reduce((acc, curr) => acc + curr.pm2_5, 0) / visibleData.length).toFixed(2)
-                : 'N/A'
-              }
+                </div>
+              </div>
+              <div className="metric-card">
+                <h4>Average Traffic Duration</h4>
+                <div className="value">
+                  {visibleData.length > 0 
+                    ? (visibleData.reduce((acc, curr) => acc + curr.duration_in_traffic_min, 0) / visibleData.length).toFixed(0)
+                    : 'N/A'
+                  }
+                </div>
+              </div>
+              <div className="metric-card">
+                <h4>Average Distance</h4>
+                <div className="value">
+                  {visibleData.length > 0 
+                    ? (visibleData.reduce((acc, curr) => acc + curr.distance_km, 0) / visibleData.length).toFixed(1)
+                    : 'N/A'
+                  }
+                </div>
+              </div>
             </div>
           </div>
-          <div className="metric-card">
-            <h4>Average PM10</h4>
-            <div className="value">
-              {visibleData.length > 0 
-                ? (visibleData.reduce((acc, curr) => acc + curr.pm10, 0) / visibleData.length).toFixed(2)
-                : 'N/A'
-              }
-            </div>
-          </div>
-          <div className="metric-card">
-            <h4>Average Traffic Duration</h4>
-            <div className="value">
-              {visibleData.length > 0 
-                ? (visibleData.reduce((acc, curr) => acc + curr.duration_in_traffic_min, 0) / visibleData.length).toFixed(0)
-                : 'N/A'
-              }
-            </div>
-          </div>
-          <div className="metric-card">
-            <h4>Average Distance</h4>
-            <div className="value">
-              {visibleData.length > 0 
-                ? (visibleData.reduce((acc, curr) => acc + curr.distance_km, 0) / visibleData.length).toFixed(1)
-                : 'N/A'
-              }
-            </div>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
