@@ -11,7 +11,5 @@ services:
         value: production
       - key: FLASK_APP
         value: app.py
-      - key: PORT
-        value: 10000
     healthCheckPath: /
     autoDeploy: true
