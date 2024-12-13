@@ -10,18 +10,24 @@ A modern, real-time dashboard for monitoring and controlling smart city infrastr
 ## Dashboard Overview
 
 ### Smart City Actuations
-![Dashboard Actuations](docs/images/dashboard-actuations.png)
+<div align="center">
+  <img src="https://raw.githubusercontent.com/SHEEEEEEEEEEEEEEEEN11/Smart-City-Dashboard/main/docs/images/dashboard-actuations.png" alt="Smart City Actuations" width="800"/>
+</div>
+
 The dashboard provides real-time control over various city infrastructure components, including:
-- Air Quality Actuations
-- Traffic Control Systems
-- Combined Infrastructure Management
+- Air Quality Actuations for managing air quality parameters
+- Traffic Control Systems for optimizing traffic flow
+- Combined Infrastructure Management for coordinated responses
 
 ### Monitoring and Key Metrics
-![Dashboard Monitoring](docs/images/dashboard-monitoring.png)
+<div align="center">
+  <img src="https://raw.githubusercontent.com/SHEEEEEEEEEEEEEEEEN11/Smart-City-Dashboard/main/docs/images/dashboard-monitoring.png" alt="Monitoring and Metrics" width="800"/>
+</div>
+
 Real-time monitoring of critical city metrics:
-- Air Quality Trends (PM2.5, PM10)
-- Traffic Flow Analysis
-- Key Performance Indicators
+- Air Quality Trends showing PM2.5 and PM10 levels over time
+- Traffic Flow Analysis with duration and distance metrics
+- Key Performance Indicators including average PM2.5, PM10, traffic duration, and overall efficiency
 
 ## Features
 
