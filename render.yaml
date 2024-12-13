@@ -3,7 +3,7 @@ services:
     name: smart-city-dashboard
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn wsgi:app
+    startCommand: gunicorn wsgi:application
     envVars:
       - key: PYTHON_VERSION
         value: 3.8.0
