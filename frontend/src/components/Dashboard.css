@@ -29,6 +29,11 @@
   border: 1px solid #e0e0e0;
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.dashboard-section:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .dashboard-section h2 {
@@ -37,14 +42,15 @@
   margin-top: 0;
   margin-bottom: 24px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.dashboard-section h3 {
-  color: #333;
-  font-size: 1.25rem;
-  margin-top: 0;
-  margin-bottom: 16px;
-  font-weight: 500;
+.dashboard-section h2 svg {
+  width: 24px;
+  height: 24px;
+  color: #1976d2;
 }
 
 .top-section {
@@ -67,6 +73,31 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   margin-bottom: 24px;
+  position: relative;
+}
+
+.chart-container .recharts-wrapper {
+  margin: 0 auto;
+}
+
+.chart-tooltip {
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chart-tooltip p {
+  margin: 4px 0;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.chart-tooltip .timestamp {
+  font-weight: 600;
+  color: #1976d2;
+  margin-bottom: 8px;
 }
 
 .metrics-grid {
@@ -82,6 +113,12 @@
   border-radius: 8px;
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .metric-card h4 {
@@ -98,9 +135,22 @@
   margin: 8px 0;
 }
 
+.metric-card .trend {
+  font-size: 0.8rem;
+  color: #4caf50;
+}
+
+.metric-card .trend.down {
+  color: #f44336;
+}
+
 @media (max-width: 1200px) {
   .graphs-container {
     grid-template-columns: 1fr;
+  }
+  
+  .chart-container {
+    overflow-x: auto;
   }
 }
 
@@ -120,5 +170,9 @@
   
   .dashboard-section {
     padding: 16px;
+  }
+  
+  .metric-card {
+    padding: 12px;
   }
 }

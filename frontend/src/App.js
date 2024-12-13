@@ -281,7 +281,7 @@ function App() {
     console.log('Starting data processing...');
     console.log('Initial data length:', parsedData.length);
     
-    // Process the data
+    // Process the data and ensure it's sorted by date
     const processedData = parsedData
       .filter(row => row.timestamp) // Remove any rows without timestamp
       .map(row => {
@@ -296,51 +296,23 @@ function App() {
           distance_km: parseFloat(row.distance_km) || 0,
           duration_in_traffic_min: parseFloat(row.duration_in_traffic_min) || 0
         };
-      });
+      })
+      .sort((a, b) => a.timestamp - b.timestamp); // Sort by timestamp
     
     console.log('Processed data length:', processedData.length);
     
-    if (processedData.length === 0) {
-      setError('No valid data found after processing');
-      return;
-    }
-
-    // Sort data by timestamp (newest first)
-    const sortedData = processedData.sort((a, b) => b.timestamp - a.timestamp);
+    // Calculate date range for filtering
+    const startDate = new Date('2023-11-28').getTime();
+    const endDate = new Date('2023-12-06').getTime();
     
-    // Calculate statistics
-    const stats = {
-      avgPM25: average(sortedData.map(d => d.pm2_5)),
-      avgPM10: average(sortedData.map(d => d.pm10)),
-      maxPM25: Math.max(...sortedData.map(d => d.pm2_5)),
-      maxPM10: Math.max(...sortedData.map(d => d.pm10)),
-      minPM25: Math.min(...sortedData.map(d => d.pm2_5)),
-      avgNO2: average(sortedData.map(d => d.no2)),
-      maxNO2: Math.max(...sortedData.map(d => d.no2)),
-      avgO3: average(sortedData.map(d => d.o3)),
-      maxO3: Math.max(...sortedData.map(d => d.o3)),
-      avgAQI: average(sortedData.map(d => d.aqi)),
-      maxAQI: Math.max(...sortedData.map(d => d.aqi)),
-      avgDuration: average(sortedData.map(d => d.duration_in_traffic_min)),
-      maxDuration: Math.max(...sortedData.map(d => d.duration_in_traffic_min)),
-      avgDistance: average(sortedData.map(d => d.distance_km)),
-      maxDistance: Math.max(...sortedData.map(d => d.distance_km))
-    };
-
-    setData(sortedData);
-    setStatistics(stats);
+    // Filter data to only include dates between Nov 28 and Dec 6
+    const filteredData = processedData.filter(
+      item => item.timestamp >= startDate && item.timestamp <= endDate
+    );
     
-    // Generate actuations based on the latest data
-    const actuations = generateActuations(sortedData);
-    setActuations(actuations);
-    
-    console.log('Data processing complete:', {
-      dataPoints: sortedData.length,
-      firstPoint: sortedData[0],
-      lastPoint: sortedData[sortedData.length - 1],
-      actuations: actuations.length
-    });
-  }, [generateActuations]);
+    console.log('Filtered data length:', filteredData.length);
+    return filteredData;
+  }, []);
 
   const loadData = useCallback(() => {
     setLoading(true);
@@ -557,55 +529,196 @@ function App() {
 
       <div className="graphs-container">
         <div className="dashboard-section">
-          <h2>Air Quality Monitoring</h2>
+          <h2>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+              <path d="M12 3v18m0-18c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9z"/>
+            </svg>
+            Air Quality Monitoring
+          </h2>
           <div className="chart-container">
-            <LineChart width={600} height={300} data={visibleData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" />
+            <LineChart 
+              width={600} 
+              height={300} 
+              data={visibleData} 
+              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis 
                 dataKey="timestamp" 
-                tickFormatter={(time) => {
-                  const date = new Date(time);
+                type="number"
+                domain={['dataMin', 'dataMax']}
+                tickFormatter={(timestamp) => {
+                  const date = new Date(timestamp);
                   return `${date.getDate()}/${date.getMonth() + 1}`;
                 }}
-                interval={Math.ceil(visibleData.length / 8)}
+                ticks={visibleData.map(item => item.timestamp).filter((_, index, array) => 
+                  index % Math.ceil(array.length / 10) === 0
+                )}
+                label={{ value: 'Date', position: 'bottom', offset: 0 }}
               />
-              <YAxis />
-              <Tooltip 
-                labelFormatter={(label) => {
-                  const date = new Date(label);
-                  return `${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${date.getMinutes()}`;
+              <YAxis 
+                yAxisId="pm"
+                label={{ 
+                  value: 'Particulate Matter (µg/m³)', 
+                  angle: -90, 
+                  position: 'insideLeft',
+                  style: { textAnchor: 'middle' }
                 }}
               />
-              <Legend />
-              <Line type="monotone" dataKey="pm2_5" stroke="#8884d8" name="PM2.5" />
-              <Line type="monotone" dataKey="pm10" stroke="#82ca9d" name="PM10" />
+              <Tooltip 
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const date = new Date(label);
+                    return (
+                      <div className="chart-tooltip">
+                        <p className="timestamp">
+                          {`${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`}
+                        </p>
+                        {payload.map((entry, index) => (
+                          <p key={index} style={{ color: entry.color }}>
+                            {`${entry.name}: ${entry.value.toFixed(2)} µg/m³`}
+                          </p>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Legend 
+                verticalAlign="top" 
+                height={36}
+                formatter={(value) => {
+                  const labels = {
+                    'pm2_5': 'PM2.5 (Fine particles)',
+                    'pm10': 'PM10 (Coarse particles)'
+                  };
+                  return labels[value] || value;
+                }}
+              />
+              <Line 
+                yAxisId="pm"
+                type="monotone" 
+                dataKey="pm2_5" 
+                name="pm2_5" 
+                stroke="#8884d8" 
+                dot={false}
+                strokeWidth={2}
+                activeDot={{ r: 6 }}
+              />
+              <Line 
+                yAxisId="pm"
+                type="monotone" 
+                dataKey="pm10" 
+                name="pm10" 
+                stroke="#82ca9d" 
+                dot={false}
+                strokeWidth={2}
+                activeDot={{ r: 6 }}
+              />
             </LineChart>
           </div>
         </div>
 
         <div className="dashboard-section">
-          <h2>Traffic Monitoring</h2>
+          <h2>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+              <path d="M18 4v16H6V4h12m1-2H5c-.55 0-1 .45-1 1v18c0 .55.45 1 1 1h14c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1zm-1 11H6v2h12v-2zm0-4H6v2h12V9zm0-4H6v2h12V5z"/>
+            </svg>
+            Traffic Monitoring
+          </h2>
           <div className="chart-container">
-            <LineChart width={600} height={300} data={visibleData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" />
+            <LineChart 
+              width={600} 
+              height={300} 
+              data={visibleData} 
+              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis 
                 dataKey="timestamp" 
-                tickFormatter={(time) => {
-                  const date = new Date(time);
+                type="number"
+                domain={['dataMin', 'dataMax']}
+                tickFormatter={(timestamp) => {
+                  const date = new Date(timestamp);
                   return `${date.getDate()}/${date.getMonth() + 1}`;
                 }}
-                interval={Math.ceil(visibleData.length / 8)}
+                ticks={visibleData.map(item => item.timestamp).filter((_, index, array) => 
+                  index % Math.ceil(array.length / 10) === 0
+                )}
+                label={{ value: 'Date', position: 'bottom', offset: 0 }}
               />
-              <YAxis />
-              <Tooltip 
-                labelFormatter={(label) => {
-                  const date = new Date(label);
-                  return `${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${date.getMinutes()}`;
+              <YAxis 
+                yAxisId="duration"
+                orientation="left"
+                label={{ 
+                  value: 'Duration (minutes)', 
+                  angle: -90, 
+                  position: 'insideLeft',
+                  style: { textAnchor: 'middle' }
                 }}
               />
-              <Legend />
-              <Line type="monotone" dataKey="duration_in_traffic_min" stroke="#8884d8" name="Traffic Duration" />
-              <Line type="monotone" dataKey="distance_km" stroke="#82ca9d" name="Distance" />
+              <YAxis 
+                yAxisId="distance"
+                orientation="right"
+                label={{ 
+                  value: 'Distance (km)', 
+                  angle: 90, 
+                  position: 'insideRight',
+                  style: { textAnchor: 'middle' }
+                }}
+              />
+              <Tooltip 
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const date = new Date(label);
+                    return (
+                      <div className="chart-tooltip">
+                        <p className="timestamp">
+                          {`${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`}
+                        </p>
+                        {payload.map((entry, index) => (
+                          <p key={index} style={{ color: entry.color }}>
+                            {`${entry.name}: ${entry.value.toFixed(2)} ${entry.name.includes('Duration') ? 'min' : 'km'}`}
+                          </p>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Legend 
+                verticalAlign="top" 
+                height={36}
+                formatter={(value) => {
+                  const labels = {
+                    'duration_in_traffic_min': 'Traffic Duration',
+                    'distance_km': 'Travel Distance'
+                  };
+                  return labels[value] || value;
+                }}
+              />
+              <Line 
+                yAxisId="duration"
+                type="monotone" 
+                dataKey="duration_in_traffic_min" 
+                name="duration_in_traffic_min" 
+                stroke="#8884d8" 
+                dot={false}
+                strokeWidth={2}
+                activeDot={{ r: 6 }}
+              />
+              <Line 
+                yAxisId="distance"
+                type="monotone" 
+                dataKey="distance_km" 
+                name="distance_km" 
+                stroke="#82ca9d" 
+                dot={false}
+                strokeWidth={2}
+                activeDot={{ r: 6 }}
+              />
             </LineChart>
           </div>
         </div>
