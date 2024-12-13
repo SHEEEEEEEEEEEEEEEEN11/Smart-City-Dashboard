@@ -11,7 +11,7 @@ A modern, real-time dashboard for monitoring and controlling smart city infrastr
 
 ### Smart City Actuations
 <div align="center">
-  <img src="https://raw.githubusercontent.com/SHEEEEEEEEEEEEEEEEN11/Smart-City-Dashboard/main/docs/images/dashboard-actuations.png" alt="Smart City Actuations" width="800"/>
+  <img src="docs/images/img1" alt="Smart City Actuations" width="800"/>
 </div>
 
 The dashboard provides real-time control over various city infrastructure components, including:
@@ -21,7 +21,7 @@ The dashboard provides real-time control over various city infrastructure compon
 
 ### Monitoring and Key Metrics
 <div align="center">
-  <img src="https://raw.githubusercontent.com/SHEEEEEEEEEEEEEEEEN11/Smart-City-Dashboard/main/docs/images/dashboard-monitoring.png" alt="Monitoring and Metrics" width="800"/>
+  <img src="docs/images/img2" alt="Monitoring and Metrics" width="800"/>
 </div>
 
 Real-time monitoring of critical city metrics:
