@@ -31,6 +31,93 @@ function App() {
   // Helper function to calculate average
   const average = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
 
+  // Add the missing generateActuations function
+  const generateActuations = useCallback((data) => {
+    if (!data || data.length === 0) return [];
+    
+    const latestData = data[0];
+    const actuations = [];
+
+    // Air Quality Actuations
+    if (latestData.pm2_5 > 35) {
+      actuations.push({
+        type: 'warning',
+        title: 'Air Purification',
+        message: `High PM2.5 levels (${latestData.pm2_5.toFixed(1)} µg/m³) detected. Activating air purification systems.`,
+        system: 'air'
+      });
+    }
+
+    if (latestData.pm10 > 150) {
+      actuations.push({
+        type: 'warning',
+        title: 'Ventilation',
+        message: `High PM10 levels (${latestData.pm10.toFixed(1)} µg/m³) detected. Increasing ventilation rate.`,
+        system: 'air'
+      });
+    }
+
+    if (latestData.aqi > 100) {
+      actuations.push({
+        type: 'error',
+        title: 'Poor Air Quality',
+        message: `AQI of ${latestData.aqi.toFixed(0)} detected. Activating emergency ventilation protocols.`,
+        system: 'air'
+      });
+    }
+
+    // Traffic Actuations
+    if (latestData.duration_in_traffic_min > 30) {
+      actuations.push({
+        type: 'warning',
+        title: 'Traffic Management',
+        message: `Heavy traffic detected (${latestData.duration_in_traffic_min.toFixed(0)} min delay). Adjusting traffic signals.`,
+        system: 'traffic'
+      });
+    }
+
+    if (latestData.duration_in_traffic_min > 45) {
+      actuations.push({
+        type: 'error',
+        title: 'Severe Congestion',
+        message: `Severe traffic delay (${latestData.duration_in_traffic_min.toFixed(0)} min). Activating emergency traffic protocols.`,
+        system: 'traffic'
+      });
+    }
+
+    // Combined Actuations
+    if (latestData.pm2_5 > 35 && latestData.duration_in_traffic_min > 30) {
+      actuations.push({
+        type: 'error',
+        title: 'Combined Alert',
+        message: 'High pollution and traffic levels detected. Implementing combined mitigation strategies.',
+        system: 'combined'
+      });
+    }
+
+    return actuations;
+  }, []);
+
+  const ActuationCard = ({ title, actuations }) => (
+    <Paper elevation={3} sx={{ p: 2, mb: 2 }}>
+      <Typography variant="h6" gutterBottom>{title}</Typography>
+      {actuations.length > 0 ? (
+        actuations.map((actuation, index) => (
+          <Alert 
+            key={index} 
+            severity={actuation.type} 
+            sx={{ mb: 1 }}
+          >
+            <AlertTitle>{actuation.title}</AlertTitle>
+            {actuation.message}
+          </Alert>
+        ))
+      ) : (
+        <Alert severity="info">No active actuations</Alert>
+      )}
+    </Paper>
+  );
+
   const processData = useCallback((parsedData) => {
     console.log('Starting data processing...');
     console.log('Initial data length:', parsedData.length);
@@ -122,116 +209,78 @@ function App() {
     console.log('Data sorted by timestamp:', sortedData);
 
     // Generate actuations based on the latest data
-    const latestData = sortedData[0];
     const actuations = generateActuations(sortedData);
     setActuations(actuations);
 
     setStatistics(stats);
-  }, []);
+  }, [generateActuations]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        console.log('Loading CSV data...');
+  const loadData = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    
+    const csvUrl = process.env.PUBLIC_URL + '/Merged_Air_Quality_and_Traffic_Data.csv';
+    console.log('Loading CSV from:', csvUrl);
+    
+    fetch(csvUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch CSV: ${response.status} ${response.statusText}`);
+        }
+        return response.text();
+      })
+      .then(csvText => {
+        if (!csvText.trim()) {
+          throw new Error('CSV file is empty');
+        }
         
-        const csvUrl = process.env.NODE_ENV === 'development' 
-          ? '/Merged_Air_Quality_and_Traffic_Data.csv'
-          : './Merged_Air_Quality_and_Traffic_Data.csv';
-          
-        console.log('Fetching CSV from:', csvUrl);
-
-        // Create a new Web Worker
-        const worker = new Worker(new URL('./csvWorker.js', import.meta.url));
-        let accumulatedData = [];
-
-        // Listen for messages from the worker
-        worker.addEventListener('message', (e) => {
-          const { type, data, error } = e.data;
-
-          if (type === 'chunk') {
-            accumulatedData = [...accumulatedData, ...data];
-            console.log('Received chunk, total rows:', accumulatedData.length);
-          } else if (type === 'complete') {
-            console.log('Parsing complete, processing data...');
-            if (accumulatedData.length > 0) {
-              processData(accumulatedData);
+        Papa.parse(csvText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            if (results.data && results.data.length > 0) {
+              // Filter out invalid rows
+              const validData = results.data.filter(row => 
+                row.timestamp && 
+                !isNaN(parseFloat(row.pm2_5)) && 
+                !isNaN(parseFloat(row.pm10))
+              );
+              
+              if (validData.length > 0) {
+                console.log('Processing', validData.length, 'valid rows');
+                processData(validData);
+              } else {
+                setError('No valid data found in CSV');
+              }
             } else {
               setError('No data found in CSV');
             }
             setLoading(false);
-            worker.terminate();
-          } else if (type === 'error') {
-            console.error('Error in worker:', error);
-            setError(error);
+          },
+          error: (error) => {
+            console.error('CSV parsing error:', error);
+            setError('Failed to parse CSV data: ' + error.message);
             setLoading(false);
-            worker.terminate();
           }
         });
-
-        // Handle worker errors
-        worker.addEventListener('error', (error) => {
-          console.error('Worker error:', error);
-          setError('Failed to process CSV data: ' + error.message);
-          setLoading(false);
-          worker.terminate();
-        });
-
-        // Start the worker
-        worker.postMessage({ csvUrl });
-
-      } catch (error) {
+      })
+      .catch(error => {
         console.error('Error loading data:', error);
-        setError('Failed to load data: ' + error.message);
+        setError(error.message || 'Failed to load data');
         setLoading(false);
-      }
-    };
-
-    loadData();
+      });
   }, [processData]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
     if (data.length > 0) {
       setVisibleData(data.slice(0, pageSize));
     }
   }, [data, pageSize]);
-
-  // Add actuation logic
-  const generateActuations = (data) => {
-    if (!data || data.length === 0) return [];
-    
-    const actuations = [];
-    const latestData = data[0];
-    
-    // Traffic light control based on congestion
-    if (latestData.duration_in_traffic_min > statistics.avgDuration * 1.5) {
-      actuations.push({
-        type: 'TRAFFIC_SIGNAL',
-        action: 'EXTEND_GREEN_DURATION',
-        reason: 'High traffic congestion detected'
-      });
-    }
-    
-    // Ventilation control based on air quality
-    if (latestData.pm2_5 > 100 || latestData.pm10 > 150) {
-      actuations.push({
-        type: 'VENTILATION',
-        action: 'INCREASE_VENTILATION',
-        reason: 'Poor air quality detected'
-      });
-    }
-    
-    // Digital signs based on combined conditions
-    if (latestData.pm2_5 > 100 && latestData.duration_in_traffic_min > statistics.avgDuration * 1.2) {
-      actuations.push({
-        type: 'DIGITAL_SIGNS',
-        action: 'DISPLAY_WARNING',
-        reason: 'High pollution and traffic levels'
-      });
-    }
-    
-    return actuations;
-  };
 
   const memoizedCharts = useMemo(() => (
     <>
@@ -373,7 +422,31 @@ function App() {
         )}
 
         <Grid container spacing={3}>
-          {/* Air Quality Section */}
+          {/* Actuations Section */}
+          <Grid item xs={12}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={4}>
+                <ActuationCard 
+                  title="Air Quality Actuations" 
+                  actuations={actuations.filter(a => a.system === 'air')} 
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <ActuationCard 
+                  title="Traffic Actuations" 
+                  actuations={actuations.filter(a => a.system === 'traffic')} 
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <ActuationCard 
+                  title="Combined Actuations" 
+                  actuations={actuations.filter(a => a.system === 'combined')} 
+                />
+              </Grid>
+            </Grid>
+          </Grid>
+
+          {/* Statistics Cards */}
           <Grid item xs={12} md={6}>
             <Paper sx={{ p: 2 }}>
               <Typography variant="h6" component="h2" sx={{ mb: 2, bgcolor: '#0D47A1', color: 'white', p: 1 }}>
@@ -439,11 +512,11 @@ function App() {
                   {actuations.map((actuation, index) => (
                     <Alert 
                       key={index} 
-                      severity={actuation.type === 'DIGITAL_SIGNS' ? 'warning' : 'info'}
+                      severity={actuation.type} 
                       sx={{ mb: 1 }}
                     >
-                      <AlertTitle>{actuation.type.replace(/_/g, ' ')}</AlertTitle>
-                      {actuation.reason} - Action: {actuation.action.replace(/_/g, ' ')}
+                      <AlertTitle>{actuation.title}</AlertTitle>
+                      {actuation.message}
                     </Alert>
                   ))}
                 </Box>

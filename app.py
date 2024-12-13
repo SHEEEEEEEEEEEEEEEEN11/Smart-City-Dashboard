@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template, send_from_directory
 from flask_cors import CORS
 import pandas as pd
 from datetime import datetime, timedelta
@@ -8,240 +8,102 @@ import logging
 import os
 import traceback
 
-app = Flask(__name__)
+app = Flask(__name__, 
+    static_folder='frontend/build/static',
+    static_url_path='/static')
+
+# Configure CORS to allow requests from PythonAnywhere domain
 CORS(app, resources={
-    r"/*": {
-        "origins": ["http://localhost:3000", "http://localhost:3001"],
+    r"/api/*": {
+        "origins": ["http://localhost:3000", "https://*.pythonanywhere.com"],
         "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type"]
     }
 })
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s: %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-# Location-specific constants
-LOCATION_NAME = "Connaught Place"
-LOCATION_DETAILS = {
-    "description": "One of Delhi's major financial and commercial hubs",
-    "coordinates": {"lat": 28.6289, "lng": 77.2065},
-    "peak_hours": ["9:00 AM - 11:00 AM", "5:00 PM - 8:00 PM"]
-}
+# Define data file path
+DATA_FILE = os.path.join(os.path.dirname(__file__), 'Merged_Air_Quality_and_Traffic_Data.csv')
 
-# Add this near the top with other constants
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, 'Merged_Air_Quality_and_Traffic_Data.csv')
-
-# Smart city features and thresholds
-SMART_FEATURES = {
-    "air_quality": {
-        "good": 50,
-        "moderate": 100,
-        "unhealthy": 150,
-        "very_unhealthy": 200,
-        "hazardous": 300
-    },
-    "crowd_density": {
-        "low": 0.3,
-        "moderate": 0.6,
-        "high": 0.8
-    },
-    "traffic_congestion": {
-        "low": 0.3,
-        "moderate": 0.6,
-        "high": 0.8
-    }
-}
-
-class SmartCityActuator:
-    """Administrative control system for Delhi's air quality and traffic management."""
-    def __init__(self):
-        self.traffic_signals = {}        # Traffic signal states across districts
-        self.alert_systems = {}          # Public alert system states
-        self.monitoring_stations = {}     # Air quality monitoring station data
-        self.emergency_protocols = {      # Emergency response protocols
-            'severe_pollution': False,
-            'traffic_emergency': False,
-            'public_health_alert': False
-        }
-
-    def manage_traffic_signals(self, district, action):
-        """
-        Manages traffic signal timing across districts.
-        Actions: 'optimize_flow', 'emergency_protocol', 'normal_operation'
-        """
-        valid_actions = ['optimize_flow', 'emergency_protocol', 'normal_operation']
-        if action in valid_actions:
-            self.traffic_signals[district] = action
-            return {'status': 'success', 'message': f'Traffic signal protocol {action} activated in {district}'}
-        return {'status': 'error', 'message': 'Invalid action specified'}
-
-    def issue_public_alert(self, district, alert_type, severity):
-        """
-        Issues public health and safety alerts.
-        Types: 'air_quality', 'traffic_congestion', 'weather_emergency'
-        """
-        alert_data = {
-            'type': alert_type,
-            'severity': severity,
-            'timestamp': datetime.now().isoformat(),
-            'district': district
-        }
-        self.alert_systems[district] = alert_data
-        return {'status': 'success', 'message': f'Alert issued for {district}: {alert_type} - {severity}'}
-
-    def update_monitoring_status(self, station_id, data):
-        """
-        Updates air quality monitoring station data.
-        """
-        self.monitoring_stations[station_id] = {
-            'data': data,
-            'last_updated': datetime.now().isoformat()
-        }
-        return {'status': 'success', 'message': f'Station {station_id} data updated'}
-
-    def activate_emergency_protocol(self, protocol_type, activate=True):
-        """
-        Activates or deactivates emergency protocols.
-        """
-        if protocol_type in self.emergency_protocols:
-            self.emergency_protocols[protocol_type] = activate
-            status = 'activated' if activate else 'deactivated'
-            return {'status': 'success', 'message': f'Emergency protocol {protocol_type} {status}'}
-        return {'status': 'error', 'message': 'Invalid protocol type'}
-
-# Initialize the actuator
-city_actuator = SmartCityActuator()
-
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
+# Global variables for data caching
+data_cache = None
+last_cache_update = None
 
 def load_data():
-    try:
-        logger.info(f"Loading data from CSV at path: {DATA_FILE}")
-        if not os.path.exists(DATA_FILE):
-            logger.error(f"CSV file not found at path: {DATA_FILE}")
-            return None
-            
-        df = pd.read_csv(DATA_FILE)
-        
-        # Validate required columns
-        required_columns = ['timestamp', 'pm2_5', 'pm10', 'no2', 'o3', 'aqi', 'duration_in_traffic_min', 'distance_km']
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            logger.error(f"Missing required columns in CSV: {missing_columns}")
-            return None
-            
-        # Convert timestamp and handle potential errors
+    global data_cache, last_cache_update
+    current_time = datetime.now()
+    
+    # Only reload data if cache is empty or older than 5 minutes
+    if data_cache is None or last_cache_update is None or (current_time - last_cache_update).seconds > 300:
         try:
+            logger.debug(f"Attempting to load data from: {DATA_FILE}")
+            logger.debug(f"Current directory: {os.getcwd()}")
+            logger.debug(f"Directory contents: {os.listdir(os.path.dirname(__file__))}")
+            
+            if not os.path.exists(DATA_FILE):
+                logger.error(f"CSV file not found at {DATA_FILE}")
+                raise FileNotFoundError(f"CSV file not found at {DATA_FILE}")
+            
+            # Read all necessary columns
+            df = pd.read_csv(DATA_FILE, usecols=['timestamp', 'pm2_5', 'pm10', 'no2', 'o3', 'aqi', 'distance_km', 'duration_in_traffic_min'])
+            logger.debug(f"Successfully loaded data. Shape: {df.shape}")
+            
+            # Convert timestamp to datetime
             df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df = df.sort_values('timestamp')
+            
+            # Get last 7 days of data
+            last_date = df['timestamp'].max()
+            seven_days_ago = last_date - pd.Timedelta(days=7)
+            df = df[df['timestamp'] >= seven_days_ago]
+            
+            data_cache = df
+            last_cache_update = current_time
+            logger.debug(f"Data cache updated. Final shape: {df.shape}")
+            
+            return df
         except Exception as e:
-            logger.error(f"Error converting timestamps: {e}")
-            return None
-            
-        # Basic data validation
-        if df.empty:
-            logger.error("CSV file is empty")
-            return None
-            
-        # Fill NaN values with appropriate defaults
-        df['pm2_5'] = df['pm2_5'].fillna(df['pm2_5'].mean())
-        df['pm10'] = df['pm10'].fillna(df['pm10'].mean())
-        df['no2'] = df['no2'].fillna(df['no2'].mean())
-        df['o3'] = df['o3'].fillna(df['o3'].mean())
-        df['aqi'] = df['aqi'].fillna(df['aqi'].mean())
-        
-        # For traffic data, replace zeros with the previous non-zero value
-        mask = df['duration_in_traffic_min'] == 0
-        df.loc[mask, 'duration_in_traffic_min'] = df['duration_in_traffic_min'].replace(0, method='ffill')
-        df.loc[df['distance_km'] == 0, 'distance_km'] = None
-        
-        logger.info(f"Data loaded successfully. Shape: {df.shape}")
-        return df
-        
-    except pd.errors.EmptyDataError:
-        logger.error("CSV file is empty")
-        return None
-    except pd.errors.ParserError as e:
-        logger.error(f"Error parsing CSV file: {e}")
-        return None
-    except Exception as e:
-        logger.error(f"Unexpected error loading CSV file: {e}")
-        return None
-
-def generate_hourly_data():
-    df = load_data()
-    if df is None:
-        return []
+            logger.error(f"Error loading data: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
     
-    # Convert timestamp to datetime
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    
-    # Sort by timestamp
-    df = df.sort_values('timestamp')
-    
-    # Take every 3rd point to reduce density
-    df = df.iloc[::3].copy()
-    
-    data_points = []
-    for _, row in df.iterrows():
-        # Format timestamp exactly like the top graph: "11/26 9:30 PM"
-        # Remove leading zeros and ensure spacing matches
-        timestamp = row['timestamp']
-        month = str(timestamp.month)
-        day = str(timestamp.day)
-        hour = str(timestamp.hour % 12 or 12)  # Convert 0 to 12
-        minute = str(timestamp.minute).zfill(2)  # Keep minutes as 2 digits
-        ampm = "AM" if timestamp.hour < 12 else "PM"
-        formatted_time = f"{month}/{day} {hour}:{minute} {ampm}"
-        
-        data_points.append({
-            "timestamp": formatted_time,
-            "indoor_pm25": row['pm2_5'],
-            "outdoor_pm25": row['pm2_5'],
-            "pm10": row['pm10'],
-            "traffic_density": row['duration_in_traffic_min']
-        })
-    
-    return data_points
-
-def get_weather_data():
-    return {
-        "temperature": round(np.random.uniform(15, 45), 1),
-        "humidity": round(np.random.uniform(30, 90), 1),
-        "wind_speed": round(np.random.uniform(0, 15), 1),
-        "season": np.random.choice(["winter", "summer", "monsoon", "autumn"])
-    }
+    return data_cache
 
 @app.route('/api/dashboard')
-def dashboard():
-    logger.info("API call: /api/dashboard")
-    current_data = generate_hourly_data()[-1]  # Get latest data point
-    
-    return jsonify({
-        "data_points": generate_hourly_data(),
-        "stats": {
-            "indoor_range": f"{current_data['indoor_pm25']} µg/m³",
-            "outdoor_pm25": f"{current_data['outdoor_pm25']} µg/m³",
-            "traffic_congestion": {
-                "level": "High" if current_data['traffic_density'] > 0.7 else 
-                         "Medium" if current_data['traffic_density'] > 0.4 else "Low",
-                "percentage": round(current_data['traffic_density'] * 100),
-                "trend": np.random.choice(["increasing", "decreasing"])
-            }
+def get_dashboard_data():
+    try:
+        logger.debug("Dashboard API called")
+        df = load_data()
+        if df is None or df.empty:
+            logger.error("No data available")
+            return jsonify({"error": "No data available"}), 500
+            
+        # Process data for the last 7 days
+        result = {
+            "pm2_5": df['pm2_5'].tolist(),
+            "pm10": df['pm10'].tolist(),
+            "traffic_duration": df['duration_in_traffic_min'].tolist(),
+            "timestamps": df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S').tolist()
         }
-    })
+        logger.debug("Successfully prepared dashboard data")
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in dashboard API: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/smart-city-data')
 def smart_city_data():
     logger.info("API call: /api/smart-city-data")
     df = load_data()
     if df is None:
+        logger.error("Failed to load data")
         return jsonify({"error": "Failed to load data"}), 500
     
     regions_data = []
@@ -282,6 +144,7 @@ def smart_city_data():
         ])
         citizen_advisory.append("Use metro or carpool for commute")
     
+    logger.debug("Successfully prepared smart city data")
     return jsonify({
         "regions": regions_data,
         "recommendations": {
@@ -345,60 +208,42 @@ def get_location_data():
 def get_air_traffic_data():
     try:
         logger.info("API call: /api/air-traffic-data")
-        logger.info("Loading data from CSV...")
-        df = pd.read_csv(DATA_FILE)
+        logger.info(f"Attempting to load data from: {DATA_FILE}")
         
-        if df.empty:
-            logger.error("CSV file is empty")
-            return jsonify({"error": "CSV file is empty"}), 500
+        if not os.path.exists(DATA_FILE):
+            logger.error(f"CSV file not found at {DATA_FILE}")
+            return jsonify({"error": "Data file not found"}), 404
+            
+        df = load_data()  # Use the cached data loading function
+        
+        if df is None or df.empty:
+            logger.error("No data available")
+            return jsonify({"error": "No data available"}), 500
             
         logger.info(f"Data loaded successfully. Shape: {df.shape}")
         
-        # Drop the unnamed index column if it exists
-        if 'Unnamed: 0' in df.columns:
-            df = df.drop('Unnamed: 0', axis=1)
-        
-        # Convert timestamp column
-        df['timestamp'] = pd.to_datetime(df['timestamp'], format='%m/%d/%Y %H:%M')
-        df = df.sort_values('timestamp')
-        
-        # Fill NaN values with appropriate defaults
-        df['pm2_5'] = df['pm2_5'].fillna(df['pm2_5'].mean())
-        df['pm10'] = df['pm10'].fillna(df['pm10'].mean())
-        df['no2'] = df['no2'].fillna(df['no2'].mean())
-        df['o3'] = df['o3'].fillna(df['o3'].mean())
-        df['aqi'] = df['aqi'].fillna(df['aqi'].mean())
-        df['duration_in_traffic_min'] = df['duration_in_traffic_min'].fillna(0)
-        df['distance_km'] = df['distance_km'].fillna(0)
-        
-        # Round numeric columns to 2 decimal places to reduce payload size
-        numeric_columns = ['pm2_5', 'pm10', 'no2', 'o3', 'aqi', 'duration_in_traffic_min', 'distance_km']
-        df[numeric_columns] = df[numeric_columns].round(2)
-        
-        # Process the data
+        # Process the data into the expected format
         data = {
-            "timestamps": df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S').tolist(),
-            "pm25": df['pm2_5'].tolist(),
-            "pm10": df['pm10'].tolist(),
-            "no2": df['no2'].tolist(),
-            "o3": df['o3'].tolist(),
-            "aqi": df['aqi'].tolist(),
-            "duration": df['duration_in_traffic_min'].tolist(),
-            "distance": df['distance_km'].tolist()
+            "data": {
+                "timestamps": df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S').tolist(),
+                "pm25": df['pm2_5'].tolist(),
+                "pm10": df['pm10'].tolist(),
+                "no2": df['no2'].tolist(),
+                "o3": df['o3'].tolist(),
+                "aqi": df['aqi'].tolist(),
+                "distance": df['distance_km'].tolist(),
+                "duration": df['duration_in_traffic_min'].tolist()
+            },
+            "status": "success"
         }
         
-        response_data = {
-            "status": "success",
-            "data": data
-        }
-        
-        logger.info(f"Sending response with {len(data['timestamps'])} data points")
-        return jsonify(response_data)
+        logger.info(f"Returning {len(data['data']['timestamps'])} records")
+        return jsonify(data)
         
     except Exception as e:
-        error_msg = f"Error in get_air_traffic_data: {str(e)}\n{traceback.format_exc()}"
-        logger.error(error_msg)
-        return jsonify({"error": error_msg}), 500
+        logger.error(f"Error in get_air_traffic_data: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 def generate_insights(df):
     """
@@ -510,8 +355,10 @@ def control_traffic():
             data['district'],
             data['action']
         )
+        logger.debug(f"Traffic signal control result: {result}")
         return jsonify(result)
     except Exception as e:
+        logger.error(f"Error in traffic control API: {str(e)}")
         return jsonify({'error': str(e)}), 400
 
 @app.route('/api/actuate/signs', methods=['POST'])
@@ -523,8 +370,10 @@ def update_signs():
             data['alert_type'],
             data['severity']
         )
+        logger.debug(f"Public alert result: {result}")
         return jsonify(result)
     except Exception as e:
+        logger.error(f"Error in public alert API: {str(e)}")
         return jsonify({'error': str(e)}), 400
 
 @app.route('/api/actuate/ventilation', methods=['POST'])
@@ -535,8 +384,10 @@ def control_ventilation():
             data['area'],
             data['action']
         )
+        logger.debug(f"Ventilation control result: {result}")
         return jsonify(result)
     except Exception as e:
+        logger.error(f"Error in ventilation control API: {str(e)}")
         return jsonify({'error': str(e)}), 400
 
 @app.route('/api/actuate/emergency-protocol', methods=['POST'])
@@ -547,8 +398,10 @@ def activate_emergency_protocol():
             data['protocol_type'],
             data['activate']
         )
+        logger.debug(f"Emergency protocol result: {result}")
         return jsonify(result)
     except Exception as e:
+        logger.error(f"Error in emergency protocol API: {str(e)}")
         return jsonify({'error': str(e)}), 400
 
 def generate_current_status(current_data):
@@ -594,5 +447,35 @@ def get_traffic_status(congestion):
     else:
         return "Congested"
 
+def get_air_quality_level(pm25):
+    if pm25 <= SMART_FEATURES["air_quality"]["good"]:
+        return "Good"
+    elif pm25 <= SMART_FEATURES["air_quality"]["moderate"]:
+        return "Moderate"
+    elif pm25 <= SMART_FEATURES["air_quality"]["unhealthy"]:
+        return "Unhealthy"
+    elif pm25 <= SMART_FEATURES["air_quality"]["very_unhealthy"]:
+        return "Very Unhealthy"
+    else:
+        return "Hazardous"
+
+# Configure logging for PythonAnywhere
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Serve React App
+@app.route('/')
+def serve_react():
+    return send_from_directory('frontend/build', 'index.html')
+
+# Serve other static files from React build
+@app.route('/<path:path>')
+def serve_build(path):
+    return send_from_directory('frontend/build', path)
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Only run this in development
+    pass

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart City Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+        .status-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-good { background-color: #28a745; }
+        .status-moderate { background-color: #ffc107; }
+        .status-poor { background-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1 class="text-center mb-4">Smart City Dashboard</h1>
+        
+        <div class="row">
+            <!-- Air Quality Card -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        Air Quality Monitoring
+                    </div>
+                    <div class="card-body">
+                        <canvas id="airQualityChart"></canvas>
+                        <div class="mt-3">
+                            <h5>Current Readings:</h5>
+                            <p>Indoor PM2.5: <span id="indoorPM25">Loading...</span></p>
+                            <p>Outdoor PM2.5: <span id="outdoorPM25">Loading...</span></p>
+                            <p>PM10: <span id="pm10">Loading...</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Traffic Monitoring Card -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        Traffic Monitoring
+                    </div>
+                    <div class="card-body">
+                        <canvas id="trafficChart"></canvas>
+                        <div class="mt-3">
+                            <h5>Traffic Status:</h5>
+                            <p>Current Density: <span id="trafficDensity">Loading...</span></p>
+                            <p>Congestion Level: <span id="congestionLevel">Loading...</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Updates Card -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        System Status
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h5>Air Quality System</h5>
+                                <p><span class="status-indicator" id="airQualityStatus"></span> <span id="airQualityStatusText">Checking...</span></p>
+                            </div>
+                            <div class="col-md-4">
+                                <h5>Traffic Monitoring System</h5>
+                                <p><span class="status-indicator" id="trafficStatus"></span> <span id="trafficStatusText">Checking...</span></p>
+                            </div>
+                            <div class="col-md-4">
+                                <h5>Last Updated</h5>
+                                <p id="lastUpdated">Checking...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize charts with better options for historical data
+        const airQualityCtx = document.getElementById('airQualityChart').getContext('2d');
+        const trafficCtx = document.getElementById('trafficChart').getContext('2d');
+
+        const airQualityChart = new Chart(airQualityCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'PM2.5',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1,
+                    fill: false
+                }, {
+                    label: 'PM10',
+                    data: [],
+                    borderColor: 'rgb(54, 162, 235)',
+                    tension: 0.1,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Air Quality Trends (Last 7 Days)'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        },
+                        ticks: {
+                            maxTicksLimit: 10
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'µg/m³'
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        const trafficChart = new Chart(trafficCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Traffic Density (minutes in traffic)',
+                    data: [],
+                    borderColor: 'rgb(153, 102, 255)',
+                    tension: 0.1,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Traffic Density Trends (Last 7 Days)'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        },
+                        ticks: {
+                            maxTicksLimit: 10
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Minutes in Traffic'
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Function to update dashboard with historical data
+        async function updateDashboard() {
+            try {
+                const response = await fetch('/api/dashboard');
+                const data = await response.json();
+
+                // Get only last 7 days of data
+                const timestamps = data.data_points.map(point => point.timestamp);
+                const pm25Data = data.data_points.map(point => point.indoor_pm25);
+                const pm10Data = data.data_points.map(point => point.pm10);
+                const trafficData = data.data_points.map(point => point.traffic_density);
+
+                // Update Air Quality Chart
+                airQualityChart.data.labels = timestamps;
+                airQualityChart.data.datasets[0].data = pm25Data;
+                airQualityChart.data.datasets[1].data = pm10Data;
+                airQualityChart.update();
+
+                // Update Traffic Chart
+                trafficChart.data.labels = timestamps;
+                trafficChart.data.datasets[0].data = trafficData;
+                trafficChart.update();
+
+                // Update current readings
+                const lastDataPoint = data.data_points[data.data_points.length - 1];
+                document.getElementById('indoorPM25').textContent = `${lastDataPoint.indoor_pm25.toFixed(2)} µg/m³`;
+                document.getElementById('outdoorPM25').textContent = `${lastDataPoint.outdoor_pm25.toFixed(2)} µg/m³`;
+                document.getElementById('pm10').textContent = `${lastDataPoint.pm10.toFixed(2)} µg/m³`;
+                document.getElementById('trafficDensity').textContent = `${lastDataPoint.traffic_density.toFixed(1)} minutes`;
+
+                // Update status indicators based on the stats from the API
+                const airQualityStatus = document.getElementById('airQualityStatus');
+                const trafficStatus = document.getElementById('trafficStatus');
+
+                // Update air quality status
+                const airQualityLevel = data.stats.air_quality.status;
+                document.getElementById('airQualityStatusText').textContent = airQualityLevel;
+                airQualityStatus.className = `status-indicator status-${airQualityLevel.toLowerCase()}`;
+
+                // Update traffic status
+                const trafficLevel = data.stats.traffic_congestion.level;
+                document.getElementById('trafficStatusText').textContent = trafficLevel;
+                document.getElementById('congestionLevel').textContent = trafficLevel;
+                trafficStatus.className = `status-indicator status-${getTrafficStatusClass(trafficLevel)}`;
+
+                // Update last updated time
+                document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            }
+        }
+
+        function getTrafficStatusClass(level) {
+            switch(level.toLowerCase()) {
+                case 'smooth': return 'good';
+                case 'moderate': return 'moderate';
+                case 'congested': return 'poor';
+                default: return 'moderate';
+            }
+        }
+
+        // Initial update
+        updateDashboard();
+
+        // Update every 5 minutes since we're dealing with historical data
+        setInterval(updateDashboard, 300000);
+    </script>
+</body>
+</html>
