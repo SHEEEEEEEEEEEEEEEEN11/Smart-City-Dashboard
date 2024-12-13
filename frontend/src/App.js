@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Box, Typography, Paper, Grid, Alert, AlertTitle, CircularProgress, Container } from '@mui/material';
+import { Box, Typography, Paper, Grid, Alert, AlertTitle, CircularProgress, Container, Button } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Papa from 'papaparse';
 
@@ -215,7 +215,9 @@ function App() {
       case 'humidifier':
         console.log(`Setting humidifier to ${action.level}`);
         break;
-      // Add more device handlers as needed
+      default:
+        console.log(`Controlling device: ${action.device}, Action: ${action.action}`);
+        break;
     }
   }, []);
 
@@ -224,9 +226,9 @@ function App() {
       <Typography variant="h6" gutterBottom>{title}</Typography>
       {actuations.length > 0 ? (
         actuations.map((actuation, index) => (
-          <Alert 
-            key={index} 
-            severity={actuation.type} 
+          <Alert
+            key={index}
+            severity={actuation.type}
             sx={{ mb: 1 }}
           >
             <AlertTitle>{actuation.title}</AlertTitle>
@@ -237,9 +239,30 @@ function App() {
                   Actions:
                 </Typography>
                 {actuation.actions.map((action, index) => (
-                  <Typography key={index} variant="body2" color="text.secondary">
-                    - {action.device}: {action.action} ({action.mode || action.speed || action.level})
-                  </Typography>
+                  <Box 
+                    key={index} 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      mt: 0.5 
+                    }}
+                  >
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{ flexGrow: 1 }}
+                    >
+                      - {action.device}: {action.action} ({action.mode || action.speed || action.level || 'N/A'})
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => handleActuation(action)}
+                      sx={{ ml: 1 }}
+                    >
+                      Execute
+                    </Button>
+                  </Box>
                 ))}
               </Box>
             )}
