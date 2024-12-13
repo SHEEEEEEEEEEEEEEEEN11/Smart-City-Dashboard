@@ -3,11 +3,15 @@ services:
     name: smart-city-dashboard
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn wsgi:application
+    startCommand: gunicorn --config gunicorn.conf.py wsgi:application
     envVars:
       - key: PYTHON_VERSION
         value: 3.8.0
       - key: FLASK_ENV
         value: production
+      - key: FLASK_APP
+        value: app.py
+      - key: PORT
+        value: 10000
     healthCheckPath: /
     autoDeploy: true

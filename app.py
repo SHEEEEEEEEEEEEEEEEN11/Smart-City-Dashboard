@@ -9,7 +9,7 @@ import os
 import traceback
 from flask import Flask, render_template, jsonify
 
-app = Flask(_name_)
+app = Flask(__name__)
 CORS(app, resources={
     r"/*": {
         "origins": ["http://localhost:3000", "http://localhost:3001"],
@@ -20,7 +20,7 @@ CORS(app, resources={
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(_name_)
+logger = logging.getLogger(__name__)
 
 # Location-specific constants
 LOCATION_NAME = "Connaught Place"
@@ -31,7 +31,7 @@ LOCATION_DETAILS = {
 }
 
 # Add this near the top with other constants
-BASE_DIR = os.path.dirname(os.path.abspath(_file_))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, 'Merged_Air_Quality_and_Traffic_Data.csv')
 
 # Smart city features and thresholds
@@ -57,7 +57,7 @@ SMART_FEATURES = {
 
 class SmartCityActuator:
     """Administrative control system for Delhi's air quality and traffic management."""
-    def _init_(self):
+    def __init__(self):
         self.traffic_signals = {}        # Traffic signal states across districts
         self.alert_systems = {}          # Public alert system states
         self.monitoring_stations = {}     # Air quality monitoring station data
