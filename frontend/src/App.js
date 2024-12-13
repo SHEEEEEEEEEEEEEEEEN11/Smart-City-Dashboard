@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Box, Typography, Paper, Grid, Alert, AlertTitle, CircularProgress, Container } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Papa from 'papaparse';
@@ -25,6 +25,8 @@ function App() {
     maxDistance: 0
   });
   const [actuations, setActuations] = useState([]);
+  const [visibleData, setVisibleData] = useState([]);
+  const [pageSize] = useState(100); // Show 100 data points at a time
 
   // Helper function to calculate average
   const average = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
@@ -138,35 +140,42 @@ function App() {
           : './Merged_Air_Quality_and_Traffic_Data.csv';
           
         console.log('Fetching CSV from:', csvUrl);
-        const response = await fetch(csvUrl);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch CSV: ${response.status} ${response.statusText}`);
-        }
-        
-        const csvText = await response.text();
-        console.log('CSV text length:', csvText.length);
-        
-        Papa.parse(csvText, {
-          header: true,
-          complete: (results) => {
-            console.log('Parsed data:', results.data.slice(0, 5)); // Log first 5 rows
-            console.log('Total rows:', results.data.length);
-            console.log('Sample row:', results.data[0]);
-            console.log('Column headers:', results.meta.fields);
-            if (results.data && results.data.length > 0) {
-              processData(results.data);
+
+        // Create a new Web Worker
+        const worker = new Worker(new URL('./csvWorker.js', import.meta.url));
+
+        // Listen for messages from the worker
+        worker.addEventListener('message', (e) => {
+          const { type, data, error } = e.data;
+
+          if (type === 'success') {
+            console.log('Parsed data:', data.slice(0, 5)); // Log first 5 rows
+            console.log('Total rows:', data.length);
+            if (data && data.length > 0) {
+              processData(data);
             } else {
               setError('No data found in CSV');
             }
-            setLoading(false);
-          },
-          error: (error) => {
-            console.error('Error parsing CSV:', error);
-            setError('Failed to parse CSV data');
-            setLoading(false);
+          } else if (type === 'error') {
+            console.error('Error in worker:', error);
+            setError(error);
           }
+
+          setLoading(false);
+          worker.terminate(); // Clean up the worker
         });
+
+        // Handle worker errors
+        worker.addEventListener('error', (error) => {
+          console.error('Worker error:', error);
+          setError('Failed to process CSV data: ' + error.message);
+          setLoading(false);
+          worker.terminate();
+        });
+
+        // Start the worker
+        worker.postMessage({ csvUrl });
+
       } catch (error) {
         console.error('Error loading data:', error);
         setError('Failed to load data: ' + error.message);
@@ -176,6 +185,12 @@ function App() {
 
     loadData();
   }, [processData]);
+
+  useEffect(() => {
+    if (data.length > 0) {
+      setVisibleData(data.slice(0, pageSize));
+    }
+  }, [data, pageSize]);
 
   // Add actuation logic
   const generateActuations = (data) => {
@@ -213,6 +228,82 @@ function App() {
     
     return actuations;
   };
+
+  const memoizedCharts = useMemo(() => (
+    <>
+      {/* Air Quality Chart */}
+      <Box sx={{ height: 300, mb: 4 }}>
+        <Typography variant="h6" align="center" gutterBottom>
+          Air Quality Trends
+        </Typography>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={visibleData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="timestamp"
+              tickFormatter={(time) => new Date(time).toLocaleDateString()}
+              interval="preserveStartEnd"
+            />
+            <YAxis />
+            <Tooltip
+              labelFormatter={(label) => new Date(label).toLocaleString()}
+            />
+            <Legend />
+            <Line type="monotone" dataKey="pm2_5" name="PM2.5" stroke="#00BCD4" dot={false} />
+            <Line type="monotone" dataKey="pm10" name="PM10" stroke="#2196F3" dot={false} />
+            <Line type="monotone" dataKey="no2" name="NO2" stroke="#9C27B0" dot={false} />
+            <Line type="monotone" dataKey="o3" name="O3" stroke="#4CAF50" dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </Box>
+
+      {/* Traffic Chart */}
+      <Box sx={{ height: 300, mb: 4 }}>
+        <Typography variant="h6" align="center" gutterBottom>
+          Traffic Density Trends
+        </Typography>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={visibleData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="timestamp"
+              tickFormatter={(time) => {
+                const date = new Date(time);
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+              }}
+              interval="preserveStartEnd"
+            />
+            <YAxis yAxisId="left" />
+            <YAxis yAxisId="right" orientation="right" />
+            <Tooltip
+              labelFormatter={(label) => {
+                const date = new Date(label);
+                return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+              }}
+              formatter={(value) => value.toFixed(2)}
+            />
+            <Legend />
+            <Line 
+              yAxisId="left"
+              type="monotone" 
+              dataKey="duration_in_traffic_min" 
+              name="Traffic Duration (min)" 
+              stroke="#8884d8" 
+              dot={false}
+            />
+            <Line 
+              yAxisId="right"
+              type="monotone" 
+              dataKey="distance_km" 
+              name="Distance (km)" 
+              stroke="#82ca9d" 
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </Box>
+    </>
+  ), [visibleData]);
 
   if (loading) {
     return (
@@ -285,29 +376,7 @@ function App() {
                 Air Quality Monitoring
               </Typography>
 
-              <Box sx={{ height: 300, mb: 4 }}>
-                <Typography variant="h6" align="center" gutterBottom>
-                  Air Quality Trends (Last 7 Days)
-                </Typography>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="timestamp"
-                      tickFormatter={(time) => new Date(time).toLocaleDateString()}
-                    />
-                    <YAxis />
-                    <Tooltip
-                      labelFormatter={(label) => new Date(label).toLocaleString()}
-                    />
-                    <Legend />
-                    <Line type="monotone" dataKey="pm2_5" name="PM2.5" stroke="#00BCD4" />
-                    <Line type="monotone" dataKey="pm10" name="PM10" stroke="#2196F3" />
-                    <Line type="monotone" dataKey="no2" name="NO2" stroke="#9C27B0" />
-                    <Line type="monotone" dataKey="o3" name="O3" stroke="#4CAF50" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Box>
+              {memoizedCharts}
 
               <Typography variant="h6" component="h3" gutterBottom>
                 Current Readings:
@@ -332,51 +401,6 @@ function App() {
               <Typography variant="h6" component="h2" sx={{ mb: 2, bgcolor: '#0D47A1', color: 'white', p: 1 }}>
                 Traffic Monitoring
               </Typography>
-
-              <Box sx={{ height: 300, mb: 4 }}>
-                <Typography variant="h6" align="center" gutterBottom>
-                  Traffic Density Trends (Last 7 Days)
-                </Typography>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="timestamp"
-                      tickFormatter={(time) => {
-                        const date = new Date(time);
-                        return `${date.getMonth() + 1}/${date.getDate()}`;
-                      }}
-                      interval={Math.ceil(data.length / 7)}
-                    />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip
-                      labelFormatter={(label) => {
-                        const date = new Date(label);
-                        return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-                      }}
-                      formatter={(value) => value.toFixed(2)}
-                    />
-                    <Legend />
-                    <Line 
-                      yAxisId="left"
-                      type="monotone" 
-                      dataKey="duration_in_traffic_min" 
-                      name="Traffic Duration (min)" 
-                      stroke="#8884d8" 
-                      dot={false}
-                    />
-                    <Line 
-                      yAxisId="right"
-                      type="monotone" 
-                      dataKey="distance_km" 
-                      name="Distance (km)" 
-                      stroke="#82ca9d" 
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Box>
 
               <Typography variant="h6" component="h3" gutterBottom>
                 Traffic Status:
@@ -420,7 +444,7 @@ function App() {
                   ))}
                 </Box>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data}>
+                  <LineChart data={visibleData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="timestamp"
@@ -428,7 +452,7 @@ function App() {
                         const date = new Date(time);
                         return `${date.getMonth() + 1}/${date.getDate()}`;
                       }}
-                      interval={Math.ceil(data.length / 7)}
+                      interval="preserveStartEnd"
                     />
                     <YAxis 
                       yAxisId="air" 
