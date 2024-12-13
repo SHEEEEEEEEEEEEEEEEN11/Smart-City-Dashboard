@@ -173,12 +173,6 @@ def load_data():
         df = df.drop_duplicates()
         logger.info(f"Total rows after dropping duplicates: {len(df)}")
 
-        # Filter data between 26th November and 6th December
-        start_date = pd.Timestamp('2023-11-26')
-        end_date = pd.Timestamp('2023-12-06')
-        df = df[(df['timestamp'] >= start_date) & (df['timestamp'] <= end_date)]
-        logger.info(f"Total rows after date filtering: {len(df)}")
-
         # Resample data to 10-minute intervals
         df.set_index('timestamp', inplace=True)
         df = df.resample('10T').mean().reset_index()
