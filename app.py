@@ -140,6 +140,15 @@ def serve(path):
 def not_found(e):
     return send_from_directory(app.static_folder, 'index.html')
 
+@app.route('/Merged_Air_Quality_and_Traffic_Data.csv')
+def serve_csv():
+    try:
+        logger.info(f"Serving CSV file from: {DATA_FILE}")
+        return send_from_directory(os.path.dirname(DATA_FILE), os.path.basename(DATA_FILE))
+    except Exception as e:
+        logger.error(f"Error serving CSV file: {e}")
+        return jsonify({"error": "Failed to serve CSV file"}), 500
+
 def load_data():
     try:
         logger.info(f"Loading data from CSV at path: {DATA_FILE}")
@@ -147,7 +156,8 @@ def load_data():
             logger.error(f"CSV file not found at path: {DATA_FILE}")
             return None
             
-        df = pd.read_csv(DATA_FILE)
+        # Read CSV file with index_col=0 to skip the index column
+        df = pd.read_csv(DATA_FILE, index_col=0)
         
         # Validate required columns
         required_columns = ['timestamp', 'pm2_5', 'pm10', 'no2', 'o3', 'aqi', 'duration_in_traffic_min', 'distance_km']
@@ -158,7 +168,7 @@ def load_data():
             
         # Convert timestamp and handle potential errors
         try:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+            df['timestamp'] = pd.to_datetime(df['timestamp'], format='%m/%d/%Y %H:%M', errors='coerce')
         except Exception as e:
             logger.error(f"Error converting timestamps: {e}")
             return None

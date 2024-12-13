@@ -312,35 +312,44 @@ function App() {
     return processedData;
   }, []);
 
-  const loadData = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    setData([]);
-    setVisibleData([]);
-    
-    const csvUrl = '/Merged_Air_Quality_and_Traffic_Data.csv';
-    console.log('Loading CSV from:', csvUrl);
-    
-    const fetchData = async () => {
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const response = await fetch(csvUrl);
+        const response = await fetch('http://localhost:10000/Merged_Air_Quality_and_Traffic_Data.csv');
+        console.log('Response status:', response.status);
         if (!response.ok) {
-          throw new Error('Failed to fetch data');
+          throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
         }
         const csvData = await response.text();
+        console.log('CSV data length:', csvData.length);
+        
         Papa.parse(csvData, {
           header: true,
+          dynamicTyping: true,
           complete: (results) => {
+            console.log('Parse complete. Total rows:', results.data.length);
             if (results.data && results.data.length > 0) {
-              const sampledData = results.data.filter((_, index) => index % 10 === 0);
+              // Process the data
+              const processedData = results.data
+                .filter(row => row.timestamp) // Remove rows without timestamp
+                .map(row => ({
+                  ...row,
+                  timestamp: new Date(row.timestamp).getTime()
+                }))
+                .filter(row => !isNaN(row.timestamp)) // Remove invalid dates
+                .sort((a, b) => a.timestamp - b.timestamp); // Sort by timestamp
               
-              if (sampledData.length === 0) {
-                setError('No data available');
-                setLoading(false);
-                return;
+              // Sample every 10th point for smoother graphs
+              const sampledData = processedData.filter((_, index) => index % 10 === 0);
+              console.log('Sampled data length:', sampledData.length);
+              
+              if (sampledData.length > 0) {
+                setData(sampledData);
+              } else {
+                setError('No valid data points found');
               }
-              
-              setData(sampledData);
             } else {
               setError('No data available');
             }
@@ -354,17 +363,13 @@ function App() {
         });
       } catch (error) {
         console.error('Error fetching data:', error);
-        setError('Error fetching data');
+        setError(`Error fetching data: ${error.message}`);
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, []);
-
-  useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, []);
 
   useEffect(() => {
     if (data.length > 0) {
@@ -472,7 +477,48 @@ function App() {
           <AlertTitle>Error</AlertTitle>
           {error}
           <Button 
-            onClick={loadData} 
+            onClick={() => {
+              const loadData = async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                  const response = await fetch('http://localhost:10000/Merged_Air_Quality_and_Traffic_Data.csv');
+                  console.log('Response status:', response.status);
+                  if (!response.ok) {
+                    throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+                  }
+                  const csvData = await response.text();
+                  console.log('CSV data length:', csvData.length);
+                  console.log('First 100 characters:', csvData.substring(0, 100));
+                  
+                  Papa.parse(csvData, {
+                    header: true,
+                    complete: (results) => {
+                      console.log('Parse complete. Total rows:', results.data.length);
+                      if (results.data && results.data.length > 0) {
+                        const sampledData = results.data.filter((_, index) => index % 10 === 0);
+                        console.log('Sampled data length:', sampledData.length);
+                        setData(sampledData);
+                      } else {
+                        setError('No data available');
+                      }
+                      setLoading(false);
+                    },
+                    error: (error) => {
+                      console.error('Error parsing CSV:', error);
+                      setError('Error parsing data');
+                      setLoading(false);
+                    }
+                  });
+                } catch (error) {
+                  console.error('Error fetching data:', error);
+                  setError(`Error fetching data: ${error.message}`);
+                  setLoading(false);
+                }
+              };
+
+              loadData();
+            }} 
             variant="outlined" 
             size="small" 
             sx={{ mt: 1 }}
@@ -493,7 +539,48 @@ function App() {
           <AlertTitle>No Data Available</AlertTitle>
           No data is available for the selected time period.
           <Button 
-            onClick={loadData} 
+            onClick={() => {
+              const loadData = async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                  const response = await fetch('http://localhost:10000/Merged_Air_Quality_and_Traffic_Data.csv');
+                  console.log('Response status:', response.status);
+                  if (!response.ok) {
+                    throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+                  }
+                  const csvData = await response.text();
+                  console.log('CSV data length:', csvData.length);
+                  console.log('First 100 characters:', csvData.substring(0, 100));
+                  
+                  Papa.parse(csvData, {
+                    header: true,
+                    complete: (results) => {
+                      console.log('Parse complete. Total rows:', results.data.length);
+                      if (results.data && results.data.length > 0) {
+                        const sampledData = results.data.filter((_, index) => index % 10 === 0);
+                        console.log('Sampled data length:', sampledData.length);
+                        setData(sampledData);
+                      } else {
+                        setError('No data available');
+                      }
+                      setLoading(false);
+                    },
+                    error: (error) => {
+                      console.error('Error parsing CSV:', error);
+                      setError('Error parsing data');
+                      setLoading(false);
+                    }
+                  });
+                } catch (error) {
+                  console.error('Error fetching data:', error);
+                  setError(`Error fetching data: ${error.message}`);
+                  setLoading(false);
+                }
+              };
+
+              loadData();
+            }} 
             variant="outlined" 
             size="small" 
             sx={{ mt: 1 }}
