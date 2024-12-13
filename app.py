@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import pandas as pd
 from datetime import datetime, timedelta
@@ -9,7 +9,7 @@ import os
 import traceback
 from flask import Flask, render_template, jsonify
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='frontend/build', static_url_path='')
 CORS(app, resources={
     r"/*": {
         "origins": ["http://localhost:3000", "http://localhost:3001"],
@@ -121,6 +121,14 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
+
+@app.route('/')
+def serve():
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.errorhandler(404)
+def not_found(e):
+    return send_from_directory(app.static_folder, 'index.html')
 
 def load_data():
     try:
@@ -237,13 +245,6 @@ def dashboard():
             }
         }
     })
-
-
-
-@app.route('/')
-def index():
-    return render_template('index.html') 
-
 
 
 

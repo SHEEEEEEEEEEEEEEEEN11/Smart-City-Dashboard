@@ -2,8 +2,11 @@ services:
   - type: web
     name: smart-city-dashboard
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --config gunicorn.conf.py wsgi:application
+    buildCommand: |
+      pip install -r requirements.txt
+      cd frontend && npm install && npm run build && cd ..
+    staticPublishPath: ./frontend/build
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --threads 4 --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.8.0
@@ -11,5 +14,7 @@ services:
         value: production
       - key: FLASK_APP
         value: app.py
+      - key: NODE_VERSION
+        value: 16.0.0
     healthCheckPath: /
     autoDeploy: true
