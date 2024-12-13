@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "setup-nativescript-stackblitz && ns preview"
+    "start": "cross-env NODE_OPTIONS='--max-old-space-size=4096' setup-nativescript-stackblitz && ns preview"
+
   },
   "dependencies": {
     "@nativescript/core": "~8.8.0",
