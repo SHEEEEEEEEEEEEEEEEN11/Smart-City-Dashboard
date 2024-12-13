@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import Papa from 'papaparse';
 import TrafficActuations from './components/TrafficActuations';
 import CombinedActuations from './components/CombinedActuations';
+import './components/Dashboard.css';
 
 function App() {
   const [data, setData] = useState([]);
@@ -528,174 +529,130 @@ function App() {
   }
 
   return (
-    <Container maxWidth="xl">
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h2" component="h1" gutterBottom align="center">
-          Smart City Dashboard
-        </Typography>
+    <div className="dashboard">
+      <div className="dashboard-header">
+        <h1>Smart City Dashboard</h1>
+      </div>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
+      <div className="top-section">
+        <div className="dashboard-section">
+          <h2>Air Quality Actuations</h2>
+          <ActuationCard 
+            title="Air Quality Actuations" 
+            actuations={actuations.filter(a => a.system === 'air')} 
+          />
+        </div>
+        <div className="dashboard-section">
+          <h2>Traffic Actuations</h2>
+          <TrafficActuations trafficData={data} />
+        </div>
+        <div className="dashboard-section">
+          <h2>Combined Actuations</h2>
+          <CombinedActuations 
+            airQualityData={data} 
+            trafficData={data} 
+          />
+        </div>
+      </div>
 
-        <Grid container spacing={3}>
-          {/* Actuations Section */}
-          <Grid item xs={12}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
-                <ActuationCard 
-                  title="Air Quality Actuations" 
-                  actuations={actuations.filter(a => a.system === 'air')} 
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <TrafficActuations trafficData={data} />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <CombinedActuations 
-                  airQuality={data} 
-                  trafficData={data} 
-                />
-              </Grid>
-            </Grid>
-          </Grid>
+      <div className="graphs-container">
+        <div className="dashboard-section">
+          <h2>Air Quality Monitoring</h2>
+          <div className="chart-container">
+            <LineChart width={600} height={300} data={visibleData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="timestamp" 
+                tickFormatter={(time) => {
+                  const date = new Date(time);
+                  return `${date.getDate()}/${date.getMonth() + 1}`;
+                }}
+                interval={Math.ceil(visibleData.length / 8)}
+              />
+              <YAxis />
+              <Tooltip 
+                labelFormatter={(label) => {
+                  const date = new Date(label);
+                  return `${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${date.getMinutes()}`;
+                }}
+              />
+              <Legend />
+              <Line type="monotone" dataKey="pm2_5" stroke="#8884d8" name="PM2.5" />
+              <Line type="monotone" dataKey="pm10" stroke="#82ca9d" name="PM10" />
+            </LineChart>
+          </div>
+        </div>
 
-          {/* Statistics Cards */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" component="h2" sx={{ mb: 2, bgcolor: '#0D47A1', color: 'white', p: 1 }}>
-                Air Quality Monitoring
-              </Typography>
+        <div className="dashboard-section">
+          <h2>Traffic Monitoring</h2>
+          <div className="chart-container">
+            <LineChart width={600} height={300} data={visibleData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="timestamp" 
+                tickFormatter={(time) => {
+                  const date = new Date(time);
+                  return `${date.getDate()}/${date.getMonth() + 1}`;
+                }}
+                interval={Math.ceil(visibleData.length / 8)}
+              />
+              <YAxis />
+              <Tooltip 
+                labelFormatter={(label) => {
+                  const date = new Date(label);
+                  return `${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${date.getMinutes()}`;
+                }}
+              />
+              <Legend />
+              <Line type="monotone" dataKey="duration_in_traffic_min" stroke="#8884d8" name="Traffic Duration" />
+              <Line type="monotone" dataKey="distance_km" stroke="#82ca9d" name="Distance" />
+            </LineChart>
+          </div>
+        </div>
+      </div>
 
-              {memoizedCharts}
-
-              <Typography variant="h6" component="h3" gutterBottom>
-                Current Readings:
-              </Typography>
-              {loading ? (
-                <CircularProgress />
-              ) : (
-                <>
-                  <Typography>PM2.5: {statistics.avgPM25.toFixed(2)} µg/m³</Typography>
-                  <Typography>PM10: {statistics.avgPM10.toFixed(2)} µg/m³</Typography>
-                  <Typography>NO2: {statistics.avgNO2.toFixed(2)} ppb</Typography>
-                  <Typography>O3: {statistics.avgO3.toFixed(2)} ppb</Typography>
-                  <Typography>AQI: {statistics.avgAQI.toFixed(0)}</Typography>
-                </>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* Traffic Section */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" component="h2" sx={{ mb: 2, bgcolor: '#0D47A1', color: 'white', p: 1 }}>
-                Traffic Monitoring
-              </Typography>
-
-              <Typography variant="h6" component="h3" gutterBottom>
-                Traffic Status:
-              </Typography>
-              {loading ? (
-                <CircularProgress />
-              ) : (
-                <>
-                  <Typography>Current Density: {statistics.avgDuration.toFixed(2)} minutes</Typography>
-                  <Typography>Average Distance: {statistics.avgDistance.toFixed(2)} km</Typography>
-                  <Typography>Max Duration: {statistics.maxDuration.toFixed(2)} minutes</Typography>
-                </>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* Air Quality vs Traffic Correlation Section */}
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" component="h2" sx={{ mb: 2, bgcolor: '#0D47A1', color: 'white', p: 1 }}>
-                Air Quality vs Traffic Correlation
-              </Typography>
-
-              <Box sx={{ height: 400, mb: 4 }}>
-                <Typography variant="h6" align="center" gutterBottom>
-                  Air Quality and Traffic Correlation with Automated Response
-                </Typography>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Automated Responses:
-                  </Typography>
-                  {actuations.map((actuation, index) => (
-                    <Alert 
-                      key={index} 
-                      severity={actuation.type} 
-                      sx={{ mb: 1 }}
-                    >
-                      <AlertTitle>{actuation.title}</AlertTitle>
-                      {actuation.message}
-                    </Alert>
-                  ))}
-                </Box>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={visibleData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="timestamp"
-                      tickFormatter={(time) => {
-                        const date = new Date(time);
-                        return `${date.getMonth() + 1}/${date.getDate()}`;
-                      }}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis 
-                      yAxisId="air" 
-                      label={{ value: 'Air Quality (µg/m³)', angle: -90, position: 'insideLeft' }}
-                    />
-                    <YAxis 
-                      yAxisId="traffic" 
-                      orientation="right"
-                      label={{ value: 'Traffic Duration (min)', angle: 90, position: 'insideRight' }}
-                    />
-                    <Tooltip
-                      labelFormatter={(label) => {
-                        const date = new Date(label);
-                        return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-                      }}
-                      formatter={(value) => value.toFixed(2)}
-                    />
-                    <Legend />
-                    <Line 
-                      yAxisId="air"
-                      type="monotone" 
-                      dataKey="pm2_5" 
-                      name="PM2.5" 
-                      stroke="#00BCD4" 
-                      dot={false}
-                    />
-                    <Line 
-                      yAxisId="air"
-                      type="monotone" 
-                      dataKey="pm10" 
-                      name="PM10" 
-                      stroke="#2196F3" 
-                      dot={false}
-                    />
-                    <Line 
-                      yAxisId="traffic"
-                      type="monotone" 
-                      dataKey="duration_in_traffic_min" 
-                      name="Traffic Duration" 
-                      stroke="#FF5722" 
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Box>
-    </Container>
+      <div className="dashboard-section">
+        <h2>Key Metrics</h2>
+        <div className="metrics-grid">
+          <div className="metric-card">
+            <h4>Average PM2.5</h4>
+            <div className="value">
+              {visibleData.length > 0 
+                ? (visibleData.reduce((acc, curr) => acc + curr.pm2_5, 0) / visibleData.length).toFixed(2)
+                : 'N/A'
+              }
+            </div>
+          </div>
+          <div className="metric-card">
+            <h4>Average PM10</h4>
+            <div className="value">
+              {visibleData.length > 0 
+                ? (visibleData.reduce((acc, curr) => acc + curr.pm10, 0) / visibleData.length).toFixed(2)
+                : 'N/A'
+              }
+            </div>
+          </div>
+          <div className="metric-card">
+            <h4>Average Traffic Duration</h4>
+            <div className="value">
+              {visibleData.length > 0 
+                ? (visibleData.reduce((acc, curr) => acc + curr.duration_in_traffic_min, 0) / visibleData.length).toFixed(0)
+                : 'N/A'
+              }
+            </div>
+          </div>
+          <div className="metric-card">
+            <h4>Average Distance</h4>
+            <div className="value">
+              {visibleData.length > 0 
+                ? (visibleData.reduce((acc, curr) => acc + curr.distance_km, 0) / visibleData.length).toFixed(1)
+                : 'N/A'
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
