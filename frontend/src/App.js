@@ -309,22 +309,7 @@ function App() {
       throw new Error('No valid data points after processing');
     }
     
-    // Calculate date range for filtering
-    const startDate = new Date('2023-11-28').getTime();
-    const endDate = new Date('2023-12-06').getTime();
-    
-    // Filter data to only include dates between Nov 28 and Dec 6
-    const filteredData = processedData.filter(
-      item => item.timestamp >= startDate && item.timestamp <= endDate
-    );
-    
-    console.log('Filtered data length:', filteredData.length);
-    
-    if (filteredData.length === 0) {
-      throw new Error('No data available for the specified date range');
-    }
-    
-    return filteredData;
+    return processedData;
   }, []);
 
   const loadData = useCallback(() => {
@@ -347,17 +332,15 @@ function App() {
           header: true,
           complete: (results) => {
             if (results.data && results.data.length > 0) {
-              const filteredData = results.data
-                .filter(row => row.timestamp && new Date(row.timestamp) >= new Date('2023-11-28') && new Date(row.timestamp) <= new Date('2023-12-06'))
-                .filter((_, index) => index % 10 === 0); // Take every 10th point for smoother graphs
+              const sampledData = results.data.filter((_, index) => index % 10 === 0);
               
-              if (filteredData.length === 0) {
-                setError('No data available for the selected date range');
+              if (sampledData.length === 0) {
+                setError('No data available');
                 setLoading(false);
                 return;
               }
               
-              setData(filteredData);
+              setData(sampledData);
             } else {
               setError('No data available');
             }
