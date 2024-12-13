@@ -38,64 +38,185 @@ function App() {
     const latestData = data[0];
     const actuations = [];
 
-    // Air Quality Actuations
+    // 1. PM2.5 Alert - Air Purifier Control
     if (latestData.pm2_5 > 35) {
       actuations.push({
         type: 'warning',
-        title: 'Air Purification',
-        message: `High PM2.5 levels (${latestData.pm2_5.toFixed(1)} µg/m³) detected. Activating air purification systems.`,
-        system: 'air'
+        title: 'PM2.5 Alert',
+        message: `High PM2.5 levels (${latestData.pm2_5.toFixed(1)} µg/m³).`,
+        system: 'air',
+        actions: [
+          { device: 'air_purifier', action: 'ON', speed: 'high' },
+          { device: 'ventilation', action: 'ON', mode: 'filter' }
+        ]
       });
     }
 
+    // 2. PM10 Alert - Emergency Ventilation
     if (latestData.pm10 > 150) {
       actuations.push({
-        type: 'warning',
-        title: 'Ventilation',
-        message: `High PM10 levels (${latestData.pm10.toFixed(1)} µg/m³) detected. Increasing ventilation rate.`,
-        system: 'air'
+        type: 'error',
+        title: 'PM10 Alert',
+        message: `Dangerous PM10 levels (${latestData.pm10.toFixed(1)} µg/m³).`,
+        system: 'air',
+        actions: [
+          { device: 'emergency_vent', action: 'ON', power: 'max' },
+          { device: 'air_purifier', action: 'ON', speed: 'turbo' },
+          { device: 'windows', action: 'CLOSE' }
+        ]
       });
     }
 
-    if (latestData.aqi > 100) {
+    // 3. NO2 Alert - Gas Management
+    if (latestData.no2 > 100) {
+      actuations.push({
+        type: 'warning',
+        title: 'NO2 Alert',
+        message: `Elevated NO2 levels (${latestData.no2.toFixed(1)} ppb).`,
+        system: 'air',
+        actions: [
+          { device: 'gas_sensor', action: 'ACTIVATE' },
+          { device: 'ventilation', action: 'ON', mode: 'exhaust' },
+          { device: 'air_quality_monitor', action: 'HEIGHTENED' }
+        ]
+      });
+    }
+
+    // 4. O3 Alert - Ozone Management
+    if (latestData.o3 > 70) {
+      actuations.push({
+        type: 'warning',
+        title: 'Ozone Alert',
+        message: `High ozone levels (${latestData.o3.toFixed(1)} ppb).`,
+        system: 'air',
+        actions: [
+          { device: 'ozone_filter', action: 'ON' },
+          { device: 'humidifier', action: 'ON', level: 'high' },
+          { device: 'outdoor_warning', action: 'ACTIVATE' }
+        ]
+      });
+    }
+
+    // 5. AQI Alert - Complete Air Management
+    if (latestData.aqi > 150) {
       actuations.push({
         type: 'error',
         title: 'Poor Air Quality',
-        message: `AQI of ${latestData.aqi.toFixed(0)} detected. Activating emergency ventilation protocols.`,
-        system: 'air'
+        message: `Critical AQI level (${latestData.aqi.toFixed(0)}).`,
+        system: 'air',
+        actions: [
+          { device: 'all_purifiers', action: 'ON', mode: 'emergency' },
+          { device: 'ventilation', action: 'ON', mode: 'recirculate' },
+          { device: 'humidifier', action: 'ON', level: 'optimal' },
+          { device: 'public_display', action: 'WARN', message: 'Poor Air Quality' }
+        ]
       });
     }
 
-    // Traffic Actuations
-    if (latestData.duration_in_traffic_min > 30) {
-      actuations.push({
-        type: 'warning',
-        title: 'Traffic Management',
-        message: `Heavy traffic detected (${latestData.duration_in_traffic_min.toFixed(0)} min delay). Adjusting traffic signals.`,
-        system: 'traffic'
-      });
-    }
-
+    // 6. Traffic Duration Alert - Traffic Management
     if (latestData.duration_in_traffic_min > 45) {
       actuations.push({
-        type: 'error',
-        title: 'Severe Congestion',
-        message: `Severe traffic delay (${latestData.duration_in_traffic_min.toFixed(0)} min). Activating emergency traffic protocols.`,
-        system: 'traffic'
+        type: 'warning',
+        title: 'Traffic Delay',
+        message: `Significant traffic delay (${latestData.duration_in_traffic_min.toFixed(0)} min).`,
+        system: 'traffic',
+        actions: [
+          { device: 'traffic_lights', action: 'OPTIMIZE', mode: 'congestion' },
+          { device: 'digital_signs', action: 'DISPLAY', message: 'Heavy Traffic Ahead' },
+          { device: 'route_guidance', action: 'ACTIVATE', mode: 'alternate' }
+        ]
       });
     }
 
-    // Combined Actuations
-    if (latestData.pm2_5 > 35 && latestData.duration_in_traffic_min > 30) {
+    // 7. Combined Air Quality & Traffic Alert
+    if (latestData.aqi > 100 && latestData.duration_in_traffic_min > 30) {
       actuations.push({
         type: 'error',
         title: 'Combined Alert',
-        message: 'High pollution and traffic levels detected. Implementing combined mitigation strategies.',
-        system: 'combined'
+        message: 'Poor air quality during heavy traffic.',
+        system: 'combined',
+        actions: [
+          { device: 'road_ventilation', action: 'ON', power: 'max' },
+          { device: 'traffic_lights', action: 'ADJUST', mode: 'dispersal' },
+          { device: 'air_quality_monitor', action: 'HEIGHTENED' },
+          { device: 'emergency_response', action: 'STANDBY' }
+        ]
+      });
+    }
+
+    // 8. Distance Alert - Route Management
+    if (latestData.distance_km > 20) {
+      actuations.push({
+        type: 'info',
+        title: 'Long Route Alert',
+        message: `Long distance detected (${latestData.distance_km.toFixed(1)} km).`,
+        system: 'traffic',
+        actions: [
+          { device: 'route_optimizer', action: 'ACTIVATE' },
+          { device: 'traffic_prediction', action: 'ANALYZE' },
+          { device: 'digital_signs', action: 'UPDATE', message: 'Consider Alt Routes' }
+        ]
+      });
+    }
+
+    // 9. Overall System Status
+    const criticalIssues = actuations.filter(a => a.type === 'error').length;
+    if (criticalIssues > 0) {
+      actuations.push({
+        type: 'error',
+        title: 'System Status',
+        message: `${criticalIssues} critical issues detected.`,
+        system: 'system',
+        actions: [
+          { device: 'emergency_systems', action: 'ACTIVATE' },
+          { device: 'notification_system', action: 'ALERT', priority: 'high' },
+          { device: 'backup_power', action: 'STANDBY' }
+        ]
+      });
+    } else if (actuations.length > 0) {
+      actuations.push({
+        type: 'warning',
+        title: 'System Status',
+        message: `${actuations.length} warnings active.`,
+        system: 'system',
+        actions: [
+          { device: 'monitoring_system', action: 'HEIGHTENED' },
+          { device: 'notification_system', action: 'WARN', priority: 'medium' }
+        ]
+      });
+    } else {
+      actuations.push({
+        type: 'success',
+        title: 'System Status',
+        message: 'All systems operating normally.',
+        system: 'system',
+        actions: [
+          { device: 'all_systems', action: 'NORMAL' },
+          { device: 'monitoring_system', action: 'ROUTINE' }
+        ]
       });
     }
 
     return actuations;
+  }, []);
+
+  // Add a function to handle actuation actions
+  const handleActuation = useCallback((action) => {
+    console.log('Executing actuation:', action);
+    // Here you would implement the actual device control logic
+    // For example, sending commands to IoT devices or traffic control systems
+    switch (action.device) {
+      case 'traffic_lights':
+        console.log(`Adjusting traffic lights to ${action.mode} mode`);
+        break;
+      case 'air_purifier':
+        console.log(`Setting air purifier to ${action.speed} speed`);
+        break;
+      case 'humidifier':
+        console.log(`Setting humidifier to ${action.level}`);
+        break;
+      // Add more device handlers as needed
+    }
   }, []);
 
   const ActuationCard = ({ title, actuations }) => (
@@ -110,6 +231,18 @@ function App() {
           >
             <AlertTitle>{actuation.title}</AlertTitle>
             {actuation.message}
+            {actuation.actions && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Actions:
+                </Typography>
+                {actuation.actions.map((action, index) => (
+                  <Typography key={index} variant="body2" color="text.secondary">
+                    - {action.device}: {action.action} ({action.mode || action.speed || action.level})
+                  </Typography>
+                ))}
+              </Box>
+            )}
           </Alert>
         ))
       ) : (
@@ -122,13 +255,11 @@ function App() {
     console.log('Starting data processing...');
     console.log('Initial data length:', parsedData.length);
     
-    // Process the last 7 days of data
+    // Process the data
     const processedData = parsedData
       .filter(row => row.timestamp) // Remove any rows without timestamp
       .map(row => {
-        // Parse the timestamp and keep it in 2024
         const timestamp = new Date(row.timestamp);
-        console.log('Original timestamp:', row.timestamp, 'Parsed date:', timestamp);
         return {
           timestamp: timestamp.getTime(),
           pm2_5: parseFloat(row.pm2_5) || 0,
@@ -139,87 +270,57 @@ function App() {
           distance_km: parseFloat(row.distance_km) || 0,
           duration_in_traffic_min: parseFloat(row.duration_in_traffic_min) || 0
         };
-      })
-      .filter(row => {
-        const rowDate = new Date(row.timestamp);
-        const valid = rowDate >= new Date('2024-11-28') && rowDate <= new Date('2024-12-06');
-        if (!valid) {
-          console.warn('Invalid timestamp:', rowDate);
-        }
-        return valid;
       });
     
-    console.log('After parsing timestamps:', processedData.length);
-    console.log('Sample processed row:', processedData[0]);
-
-    // Get data from 26/11/2024 21:48 to 6/12/2024
-    const endDate = new Date('2024-12-06');
-    const startDate = new Date('2024-11-26T21:48:00');
-    startDate.setHours(21, 48, 0, 0);
+    console.log('Processed data length:', processedData.length);
     
-    console.log('Filtering for date range:', {
-      from: startDate.toISOString(),
-      to: endDate.toISOString()
-    });
-
-    const filteredData = processedData.filter(row => {
-      const rowDate = new Date(row.timestamp);
-      console.log('Row date:', rowDate);
-      return rowDate >= startDate && rowDate <= endDate;
-    });
-
-    console.log('After date filtering:', filteredData.length);
-    if (filteredData.length > 0) {
-      console.log('First filtered row:', {
-        date: new Date(filteredData[0].timestamp).toISOString(),
-        pm2_5: filteredData[0].pm2_5,
-        pm10: filteredData[0].pm10,
-        duration: filteredData[0].duration_in_traffic_min
-      });
-      console.log('Last filtered row:', {
-        date: new Date(filteredData[filteredData.length - 1].timestamp).toISOString(),
-        pm2_5: filteredData[filteredData.length - 1].pm2_5,
-        pm10: filteredData[filteredData.length - 1].pm10,
-        duration: filteredData[filteredData.length - 1].duration_in_traffic_min
-      });
+    if (processedData.length === 0) {
+      setError('No valid data found after processing');
+      return;
     }
 
+    // Sort data by timestamp (newest first)
+    const sortedData = processedData.sort((a, b) => b.timestamp - a.timestamp);
+    
     // Calculate statistics
     const stats = {
-      avgPM25: average(filteredData.map(d => d.pm2_5)),
-      avgPM10: average(filteredData.map(d => d.pm10)),
-      maxPM25: Math.max(...filteredData.map(d => d.pm2_5)),
-      maxPM10: Math.max(...filteredData.map(d => d.pm10)),
-      minPM25: Math.min(...filteredData.map(d => d.pm2_5)),
-      avgNO2: average(filteredData.map(d => d.no2)),
-      maxNO2: Math.max(...filteredData.map(d => d.no2)),
-      avgO3: average(filteredData.map(d => d.o3)),
-      maxO3: Math.max(...filteredData.map(d => d.o3)),
-      avgAQI: average(filteredData.map(d => d.aqi)),
-      maxAQI: Math.max(...filteredData.map(d => d.aqi)),
-      avgDuration: average(filteredData.map(d => d.duration_in_traffic_min)),
-      maxDuration: Math.max(...filteredData.map(d => d.duration_in_traffic_min)),
-      avgDistance: average(filteredData.map(d => d.distance_km)),
-      maxDistance: Math.max(...filteredData.map(d => d.distance_km))
+      avgPM25: average(sortedData.map(d => d.pm2_5)),
+      avgPM10: average(sortedData.map(d => d.pm10)),
+      maxPM25: Math.max(...sortedData.map(d => d.pm2_5)),
+      maxPM10: Math.max(...sortedData.map(d => d.pm10)),
+      minPM25: Math.min(...sortedData.map(d => d.pm2_5)),
+      avgNO2: average(sortedData.map(d => d.no2)),
+      maxNO2: Math.max(...sortedData.map(d => d.no2)),
+      avgO3: average(sortedData.map(d => d.o3)),
+      maxO3: Math.max(...sortedData.map(d => d.o3)),
+      avgAQI: average(sortedData.map(d => d.aqi)),
+      maxAQI: Math.max(...sortedData.map(d => d.aqi)),
+      avgDuration: average(sortedData.map(d => d.duration_in_traffic_min)),
+      maxDuration: Math.max(...sortedData.map(d => d.duration_in_traffic_min)),
+      avgDistance: average(sortedData.map(d => d.distance_km)),
+      maxDistance: Math.max(...sortedData.map(d => d.distance_km))
     };
 
-    const sortedData = filteredData.sort((a, b) => b.timestamp - a.timestamp);
     setData(sortedData);
-
-    console.log('Data sorted by timestamp:', sortedData);
-
+    setStatistics(stats);
+    
     // Generate actuations based on the latest data
     const actuations = generateActuations(sortedData);
     setActuations(actuations);
-
-    setStatistics(stats);
+    
+    console.log('Data processing complete:', {
+      dataPoints: sortedData.length,
+      firstPoint: sortedData[0],
+      lastPoint: sortedData[sortedData.length - 1],
+      actuations: actuations.length
+    });
   }, [generateActuations]);
 
   const loadData = useCallback(() => {
     setLoading(true);
     setError(null);
     
-    const csvUrl = process.env.PUBLIC_URL + '/Merged_Air_Quality_and_Traffic_Data.csv';
+    const csvUrl = '/Merged_Air_Quality_and_Traffic_Data.csv';
     console.log('Loading CSV from:', csvUrl);
     
     fetch(csvUrl)
@@ -239,20 +340,13 @@ function App() {
           dynamicTyping: true,
           skipEmptyLines: true,
           complete: (results) => {
+            console.log('CSV parsing complete:', {
+              rows: results.data.length,
+              fields: results.meta.fields
+            });
+            
             if (results.data && results.data.length > 0) {
-              // Filter out invalid rows
-              const validData = results.data.filter(row => 
-                row.timestamp && 
-                !isNaN(parseFloat(row.pm2_5)) && 
-                !isNaN(parseFloat(row.pm10))
-              );
-              
-              if (validData.length > 0) {
-                console.log('Processing', validData.length, 'valid rows');
-                processData(validData);
-              } else {
-                setError('No valid data found in CSV');
-              }
+              processData(results.data);
             } else {
               setError('No data found in CSV');
             }
