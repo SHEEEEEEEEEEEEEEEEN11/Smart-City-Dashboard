@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Box, Typography, Paper, Grid, Alert, AlertTitle, CircularProgress, Container, Button } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Papa from 'papaparse';
+import TrafficActuations from './components/TrafficActuations';
+import CombinedActuations from './components/CombinedActuations';
 
 function App() {
   const [data, setData] = useState([]);
@@ -549,15 +551,12 @@ function App() {
                 />
               </Grid>
               <Grid item xs={12} md={4}>
-                <ActuationCard 
-                  title="Traffic Actuations" 
-                  actuations={actuations.filter(a => a.system === 'traffic')} 
-                />
+                <TrafficActuations trafficData={data} />
               </Grid>
               <Grid item xs={12} md={4}>
-                <ActuationCard 
-                  title="Combined Actuations" 
-                  actuations={actuations.filter(a => a.system === 'combined')} 
+                <CombinedActuations 
+                  airQuality={data} 
+                  trafficData={data} 
                 />
               </Grid>
             </Grid>

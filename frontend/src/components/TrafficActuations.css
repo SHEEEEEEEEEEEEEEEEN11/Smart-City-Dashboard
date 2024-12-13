@@ -1,0 +1,70 @@
+.traffic-actuations {
+  padding: 16px;
+  background-color: #f7f7f7;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 16px 0;
+}
+
+.traffic-options {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.traffic-option {
+  padding: 16px;
+  border-radius: 8px;
+  text-align: center;
+  flex: 1;
+  min-width: 200px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease-in-out;
+}
+
+.traffic-option:hover {
+  transform: translateY(-2px);
+}
+
+.traffic-option h4 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #333;
+}
+
+.traffic-option.green {
+  background-color: #e8f5e9;
+  border: 1px solid #4caf50;
+}
+
+.traffic-option.blue {
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3;
+}
+
+.traffic-option.orange {
+  background-color: #fff3e0;
+  border: 1px solid #ff9800;
+}
+
+.traffic-option button {
+  background-color: #2196f3;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.traffic-option button:hover {
+  background-color: #1976d2;
+}
+
+.traffic-option p {
+  margin: 8px 0;
+  color: #666;
+  font-size: 0.9em;
+  line-height: 1.4;
+}

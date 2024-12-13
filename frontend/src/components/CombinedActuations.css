@@ -1,0 +1,31 @@
+.combined-actuations {
+  padding: 16px;
+  background-color: #f7f7f7;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 16px 0;
+}
+
+.combined-actuations h3 {
+  margin-top: 0;
+  color: #333;
+  margin-bottom: 16px;
+}
+
+.actuation-summary {
+  background-color: #fff;
+  padding: 16px;
+  border-radius: 6px;
+  border-left: 4px solid #2196f3;
+}
+
+.actuation-summary p {
+  margin: 0;
+  color: #444;
+  line-height: 1.5;
+}
+
+.actuation-summary strong {
+  color: #1976d2;
+  font-weight: 500;
+}
