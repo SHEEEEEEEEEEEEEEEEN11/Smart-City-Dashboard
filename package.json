@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "cross-env NODE_OPTIONS='--max-old-space-size=4096' setup-nativescript-stackblitz && ns preview"
+    "start": "PORT=3001 cross-env NODE_OPTIONS='--max-old-space-size=4096 --openssl-legacy-provider' react-app-rewired start"
+
 
   },
   "dependencies": {
