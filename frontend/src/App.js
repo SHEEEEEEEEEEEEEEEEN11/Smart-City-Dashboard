@@ -143,26 +143,30 @@ function App() {
 
         // Create a new Web Worker
         const worker = new Worker(new URL('./csvWorker.js', import.meta.url));
+        let accumulatedData = [];
 
         // Listen for messages from the worker
         worker.addEventListener('message', (e) => {
           const { type, data, error } = e.data;
 
-          if (type === 'success') {
-            console.log('Parsed data:', data.slice(0, 5)); // Log first 5 rows
-            console.log('Total rows:', data.length);
-            if (data && data.length > 0) {
-              processData(data);
+          if (type === 'chunk') {
+            accumulatedData = [...accumulatedData, ...data];
+            console.log('Received chunk, total rows:', accumulatedData.length);
+          } else if (type === 'complete') {
+            console.log('Parsing complete, processing data...');
+            if (accumulatedData.length > 0) {
+              processData(accumulatedData);
             } else {
               setError('No data found in CSV');
             }
+            setLoading(false);
+            worker.terminate();
           } else if (type === 'error') {
             console.error('Error in worker:', error);
             setError(error);
+            setLoading(false);
+            worker.terminate();
           }
-
-          setLoading(false);
-          worker.terminate(); // Clean up the worker
         });
 
         // Handle worker errors

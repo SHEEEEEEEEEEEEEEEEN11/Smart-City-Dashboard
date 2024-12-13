@@ -1,4 +1,4 @@
-import Papa from 'papaparse';
+self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js');
 
 // Listen for messages from the main thread
 self.addEventListener('message', async (e) => {
@@ -12,20 +12,25 @@ self.addEventListener('message', async (e) => {
     }
     
     const csvText = await response.text();
+    let chunkSize = 0;
     
     // Parse the CSV data with optimized settings
     Papa.parse(csvText, {
       header: true,
       dynamicTyping: true, // Automatically convert numeric values
       fastMode: true, // Faster parsing for clean CSV
-      chunk: (results, parser) => {
+      chunk: (results) => {
         // Process data in chunks
-        self.postMessage({
-          type: 'chunk',
-          data: results.data
-        });
+        if (results.data && results.data.length > 0) {
+          chunkSize += results.data.length;
+          self.postMessage({
+            type: 'chunk',
+            data: results.data
+          });
+        }
       },
       complete: () => {
+        console.log('Finished processing', chunkSize, 'rows');
         self.postMessage({
           type: 'complete'
         });
