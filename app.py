@@ -9,6 +9,20 @@ import os
 import traceback
 from flask import Flask, render_template, jsonify
 
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Constants
+DATA_FILE = os.path.join(os.path.dirname(__file__), 'Merged_Air_Quality_and_Traffic_Data.csv')
+
 app = Flask(__name__, static_folder='frontend/build', static_url_path='')
 CORS(app, resources={
     r"/*": {
@@ -18,10 +32,6 @@ CORS(app, resources={
     }
 })
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
 # Location-specific constants
 LOCATION_NAME = "Connaught Place"
 LOCATION_DETAILS = {
@@ -29,10 +39,6 @@ LOCATION_DETAILS = {
     "coordinates": {"lat": 28.6289, "lng": 77.2065},
     "peak_hours": ["9:00 AM - 11:00 AM", "5:00 PM - 8:00 PM"]
 }
-
-# Add this near the top with other constants
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, 'Merged_Air_Quality_and_Traffic_Data.csv')
 
 # Smart city features and thresholds
 SMART_FEATURES = {
