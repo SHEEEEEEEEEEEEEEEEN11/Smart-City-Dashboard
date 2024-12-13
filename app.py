@@ -152,7 +152,7 @@ def load_data():
             
         # Convert timestamp and handle potential errors
         try:
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         except Exception as e:
             logger.error(f"Error converting timestamps: {e}")
             return None
@@ -161,20 +161,35 @@ def load_data():
         if df.empty:
             logger.error("CSV file is empty")
             return None
-            
-        # Fill NaN values with appropriate defaults
+
+        # Drop duplicates
+        logger.info(f"Total rows before dropping duplicates: {len(df)}")
+        df = df.drop_duplicates()
+        logger.info(f"Total rows after dropping duplicates: {len(df)}")
+
+        # Filter data between 26th November and 6th December
+        start_date = pd.Timestamp('2023-11-26')
+        end_date = pd.Timestamp('2023-12-06')
+        df = df[(df['timestamp'] >= start_date) & (df['timestamp'] <= end_date)]
+        logger.info(f"Total rows after date filtering: {len(df)}")
+
+        # Resample data to 10-minute intervals
+        df.set_index('timestamp', inplace=True)
+        df = df.resample('10T').mean().reset_index()
+        logger.info(f"Total rows after resampling: {len(df)}")
+
+        # Fill missing values
         df['pm2_5'] = df['pm2_5'].fillna(df['pm2_5'].mean())
         df['pm10'] = df['pm10'].fillna(df['pm10'].mean())
         df['no2'] = df['no2'].fillna(df['no2'].mean())
         df['o3'] = df['o3'].fillna(df['o3'].mean())
         df['aqi'] = df['aqi'].fillna(df['aqi'].mean())
         
-        # For traffic data, replace zeros with the previous non-zero value
-        mask = df['duration_in_traffic_min'] == 0
-        df.loc[mask, 'duration_in_traffic_min'] = df['duration_in_traffic_min'].replace(0, method='ffill')
-        df.loc[df['distance_km'] == 0, 'distance_km'] = None
+        # For traffic data, use forward fill for missing values
+        df['duration_in_traffic_min'] = df['duration_in_traffic_min'].fillna(method='ffill')
+        df['distance_km'] = df['distance_km'].fillna(method='ffill')
         
-        logger.info(f"Data loaded successfully. Shape: {df.shape}")
+        logger.info(f"Data loaded and cleaned successfully. Shape: {df.shape}")
         return df
         
     except pd.errors.EmptyDataError:
