@@ -23,7 +23,7 @@ try:
     if project_dir not in sys.path:
         sys.path.insert(0, project_dir)
 
-    from app import app as application
+    from app_new import app as application
 
     # Log application startup
     logger.info("WSGI application starting up")

@@ -129,7 +129,7 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Air Quality Trends (Last 7 Days)'
+                        text: 'Air Quality Trends'
                     },
                     tooltip: {
                         mode: 'index',
@@ -138,13 +138,11 @@
                 },
                 scales: {
                     x: {
+                        type: 'category',
                         display: true,
                         title: {
                             display: true,
                             text: 'Time'
-                        },
-                        ticks: {
-                            maxTicksLimit: 10
                         }
                     },
                     y: {
@@ -176,7 +174,7 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Traffic Density Trends (Last 7 Days)'
+                        text: 'Traffic Density Trends'
                     },
                     tooltip: {
                         mode: 'index',
@@ -185,13 +183,11 @@
                 },
                 scales: {
                     x: {
+                        type: 'category',
                         display: true,
                         title: {
                             display: true,
                             text: 'Time'
-                        },
-                        ticks: {
-                            maxTicksLimit: 10
                         }
                     },
                     y: {
@@ -212,20 +208,27 @@
                 const response = await fetch('/api/dashboard');
                 const data = await response.json();
 
-                // Get only last 7 days of data
-                const timestamps = data.data_points.map(point => point.timestamp);
+                // Create dates from Nov 28 to Dec 6
+                const dates = [];
+                const startDate = new Date('2023-11-28');
+                const endDate = new Date('2023-12-06');
+                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                    dates.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                }
+
+                // Get data points
                 const pm25Data = data.data_points.map(point => point.indoor_pm25);
                 const pm10Data = data.data_points.map(point => point.pm10);
                 const trafficData = data.data_points.map(point => point.traffic_density);
 
                 // Update Air Quality Chart
-                airQualityChart.data.labels = timestamps;
+                airQualityChart.data.labels = dates;
                 airQualityChart.data.datasets[0].data = pm25Data;
                 airQualityChart.data.datasets[1].data = pm10Data;
                 airQualityChart.update();
 
                 // Update Traffic Chart
-                trafficChart.data.labels = timestamps;
+                trafficChart.data.labels = dates;
                 trafficChart.data.datasets[0].data = trafficData;
                 trafficChart.update();
 

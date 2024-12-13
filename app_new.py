@@ -12,8 +12,8 @@ CORS(app)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Update the data file path to use absolute path for PythonAnywhere
-DATA_FILE = 'c:/Users/HP/Downloads/project/Merged_Air_Quality_and_Traffic_Data.csv'
+# Update the data file path to be relative
+DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Merged_Air_Quality_and_Traffic_Data.csv')
 
 def get_traffic_status(congestion):
     if congestion < 10:
