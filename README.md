@@ -7,6 +7,22 @@ A modern, real-time dashboard for monitoring and controlling smart city infrastr
 ![Flask](https://img.shields.io/badge/Flask-2.0.0-green)
 ![Material UI](https://img.shields.io/badge/Material--UI-5.0.0-purple)
 
+## Dashboard Overview
+
+### Smart City Actuations
+![Dashboard Actuations](docs/images/dashboard-actuations.png)
+The dashboard provides real-time control over various city infrastructure components, including:
+- Air Quality Actuations
+- Traffic Control Systems
+- Combined Infrastructure Management
+
+### Monitoring and Key Metrics
+![Dashboard Monitoring](docs/images/dashboard-monitoring.png)
+Real-time monitoring of critical city metrics:
+- Air Quality Trends (PM2.5, PM10)
+- Traffic Flow Analysis
+- Key Performance Indicators
+
 ## Features
 
 - **Real-time Monitoring**
