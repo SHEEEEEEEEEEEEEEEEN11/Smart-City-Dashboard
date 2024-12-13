@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import logging
+import traceback
 
 app = Flask(__name__, template_folder='templates')
 CORS(app)
@@ -38,6 +39,11 @@ def index():
 @app.route('/api/dashboard')
 def get_dashboard_data():
     try:
+        # Log the current directory and data file path
+        logger.info(f"Current working directory: {os.getcwd()}")
+        logger.info(f"Attempting to read data from: {DATA_FILE}")
+        logger.info(f"Data file exists: {os.path.exists(DATA_FILE)}")
+        
         # Load the data from CSV
         df = pd.read_csv(DATA_FILE)
         
@@ -47,14 +53,17 @@ def get_dashboard_data():
         # Sort by timestamp
         df = df.sort_values('timestamp')
         
-        # Get last 7 days of data
-        last_date = df['timestamp'].max()
-        seven_days_ago = last_date - pd.Timedelta(days=7)
-        df = df[df['timestamp'] >= seven_days_ago]
+        # Create dates from Nov 28 to Dec 6
+        start_date = pd.Timestamp('2023-11-28')
+        end_date = pd.Timestamp('2023-12-06')
+        
+        # Filter data for the specific date range
+        df = df[(df['timestamp'].dt.date >= start_date.date()) & 
+                (df['timestamp'].dt.date <= end_date.date())]
         
         # Format timestamp for display
         formatted_df = df.copy()
-        formatted_df['timestamp'] = formatted_df['timestamp'].dt.strftime('%m/%d %I:%M %p')
+        formatted_df['timestamp'] = formatted_df['timestamp'].dt.strftime('%b %d')
         
         # Create response data
         data_points = []
@@ -89,4 +98,5 @@ def get_dashboard_data():
         
     except Exception as e:
         logger.error(f"Error in dashboard route: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
